@@ -137,7 +137,9 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .items-table .amt-col{width:104px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; padding-top:10px; white-space:nowrap;}
 .items-table .rm-col{width:26px;}
 
-.calc-grid{display:grid; grid-template-columns:auto repeat(4,minmax(48px,1fr)); gap:4px 6px; align-items:center;}
+.calc-grid{display:grid; grid-template-columns:auto repeat(4,minmax(48px,1fr)); gap:0; align-items:center;}
+.calc-grid > *{padding:0 6px; box-sizing:border-box;}
+.calc-grid > *:not(:first-child){border-left:1px solid var(--line);}
 .cell-stack{display:flex; flex-direction:column; gap:3px; min-width:150px;}
 .cell-stack select{font-size:11.5px; padding:3px 2px;}
 .mini-row{display:flex; gap:4px;}
@@ -304,7 +306,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 <script>
 const CATALOG = {
  "IPE": {
-  "label": "IPE Beams",
+  "label": "IPE",
   "items": [
    {
     "size": "IPE 100x55",
@@ -387,7 +389,7 @@ const CATALOG = {
   ]
  },
  "UB": {
-  "label": "Universal Beams (UB)",
+  "label": "UB",
   "items": [
    {
     "size": "UB 203x133x25",
@@ -560,7 +562,7 @@ const CATALOG = {
   ]
  },
  "UC": {
-  "label": "Universal Columns (UC)",
+  "label": "UC",
   "items": [
    {
     "size": "UC 152x152x23",
@@ -643,7 +645,7 @@ const CATALOG = {
   ]
  },
  "RHS": {
-  "label": "Rectangular Hollow Section (RHS)",
+  "label": "RHS",
   "items": [
    {
     "size": "40x20",
@@ -894,7 +896,7 @@ const CATALOG = {
   ]
  },
  "SHS": {
-  "label": "Square Hollow Section (SHS)",
+  "label": "SHS",
   "items": [
    {
     "size": "16x16",
@@ -1193,7 +1195,7 @@ const CATALOG = {
   ]
  },
  "CHS": {
-  "label": "Circular Hollow Section (CHS)",
+  "label": "CHS",
   "items": [
    {
     "size": "16",
@@ -1402,7 +1404,7 @@ const CATALOG = {
   ]
  },
  "EQ A": {
-  "label": "Equal Angles (RSA)",
+  "label": "RSA (Equal)",
   "items": [
    {
     "size": "20x20",
@@ -1761,7 +1763,7 @@ const CATALOG = {
   ]
  },
  "UEQ A": {
-  "label": "Unequal Angles (RSA)",
+  "label": "RSA (Unequal)",
   "items": [
    {
     "size": "75x50",
@@ -1874,7 +1876,7 @@ const CATALOG = {
   ]
  },
  "R BArs": {
-  "label": "Round Bars",
+  "label": "Round Bar",
   "items": [
    {
     "size": "6",
@@ -1927,7 +1929,7 @@ const CATALOG = {
   ]
  },
  "Pln Chls": {
-  "label": "Plain Channels",
+  "label": "Channel",
   "items": [
    {
     "size": "50x50",
@@ -1980,7 +1982,7 @@ const CATALOG = {
   ]
  },
  "Flats": {
-  "label": "Flat Bars",
+  "label": "Flat Bar",
   "items": [
    {
     "size": "20x3mm flat",
@@ -2261,7 +2263,7 @@ const CATALOG = {
   ]
  },
  "Zed": {
-  "label": "Zed Purlins",
+  "label": "Zed",
   "items": [
    {
     "size": "Z100",
@@ -2332,7 +2334,7 @@ const CATALOG = {
   ]
  },
  "U-Chls": {
-  "label": "U-Channels",
+  "label": "U-Channel",
   "items": [
    {
     "size": "76x38x7",
@@ -2439,7 +2441,7 @@ const CATALOG = {
   ]
  },
  "plates": {
-  "label": "Standard Plates (1220x2440)",
+  "label": "Plate",
   "items": [
    {
     "size": "1220x2440x6mm plate",
@@ -2943,7 +2945,7 @@ function renderGroup(sec, g, isOptional){
     <table class="items-table">
       <thead><tr>
         <th class="num-col">#</th><th class="desc-col">Description</th><th class="unit-col">Unit</th>
-        <th class="mode-col">Weight mode</th><th class="calc-col" style="padding:0;"><div class="calc-grid" style="padding:4px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#6B7785;font-weight:700;"><span>Profile</span><span>Nos</span><span>Length&nbsp;/&nbsp;qty</span><span>Total&nbsp;m</span><span>kg/m</span><span style="border-left:1.5px solid var(--line);padding-left:6px;color:var(--navy);">Total&nbsp;kg</span></div></th>
+        <th class="mode-col">Weight mode</th><th class="calc-col" style="padding:0;"><div class="calc-grid" style="padding:6px 0;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#6B7785;font-weight:700;"><span>Profile</span><span>Nos</span><span>Length&nbsp;/&nbsp;qty</span><span>Total&nbsp;m</span><span>kg/m</span><span style="color:var(--navy);">Total&nbsp;kg</span></div></th>
         <th class="wt-col" style="text-align:right;">Total kg</th><th class="rate-col">Rate KSH</th><th class="amt-col">Amount KSH</th><th class="rm-col"></th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="9" class="empty-row">No items yet \u2014 add one below.</td></tr>'}</tbody>
