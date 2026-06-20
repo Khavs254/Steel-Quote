@@ -119,8 +119,11 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .items-table th{
   text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.4px;
   color:var(--steel); font-weight:700; padding:4px 6px; border-bottom:1.5px solid var(--line);
+  border-right:1px solid var(--line);
 }
-.items-table td{padding:6px 6px; border-bottom:1px solid #EFEAE0; vertical-align:top;}
+.items-table th:last-child{border-right:none;}
+.items-table td{padding:6px 6px; border-bottom:1px solid #EFEAE0; vertical-align:top; border-right:1px solid #EFEAE0;}
+.items-table td:last-child{border-right:none;}
 .items-table .num-col{width:24px; color:var(--steel); font-family:'IBM Plex Mono',monospace; padding-top:10px;}
 .items-table .desc-col{min-width:190px;}
 .items-table .desc-col input{margin-bottom:3px;}
@@ -128,6 +131,8 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .items-table .unit-col{width:64px;}
 .items-table .mode-col{width:118px;}
 .items-table .rate-col{width:78px;}
+.items-table .wt-col{width:80px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--navy); font-weight:600; padding-top:10px; white-space:nowrap;}
+.items-table .wt-col th{text-align:right;}
 .items-table .amt-col{width:104px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; padding-top:10px; white-space:nowrap;}
 .items-table .rm-col{width:26px;}
 
@@ -2896,6 +2901,7 @@ function renderItemRow(sec, g, it, idx, isOptional){
     <td class="unit-col">${selectInput('item',sec.id,g.id,it.id,'unit',it.unit,UNITS.map(u=>({v:u,l:u})),isOptional)}</td>
     <td class="mode-col">${weightModeSel}</td>
     <td class="calc-col"><div class="calc-grid">${weightCells}</div></td>
+    <td class="wt-col">${it.unit==='Kgs' ? (itemWeight(it)>0 ? itemWeight(it).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1})+' kg' : '\u2014') : '\u2014'}</td>
     <td class="rate-col">${numInput('item',sec.id,g.id,it.id,'rate',it.rate,isOptional,{cls:'w-sm'})}</td>
     <td class="amt-col">${money(itemAmount(it))}</td>
     <td class="rm-col">${btn('\u2715','remove-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon btn-danger')}</td>
@@ -2910,15 +2916,15 @@ function renderGroup(sec, g, isOptional){
   if(g.isSteel){
     const conn = gt * num(g.connectionsPct)/100;
     tailRows = `
-      <tr class="sum-row"><td colspan="6">Steel sub-total</td><td class="amt-col">${money(gt)}</td><td></td></tr>
+      <tr class="sum-row"><td colspan="7">Steel sub-total</td><td class="amt-col">${money(gt)}</td><td></td></tr>
       <tr class="sum-row conn-row">
         <td colspan="4">MS Connections</td>
-        <td colspan="2" class="conn-pct-cell">
+        <td colspan="3" class="conn-pct-cell">
           <input type="text" inputmode="decimal" class="f-num w-xs" data-scope="group" data-section="${sec.id}" data-group="${g.id}" data-field="connectionsPct" data-optional="${isOptional?1:0}" data-path="${path('group',sec.id,g.id,'','connectionsPct',isOptional)}" value="${g.connectionsPct}"> % of steel
         </td>
         <td class="amt-col">${money(conn)}</td><td></td>
       </tr>
-      <tr class="sum-row total-row"><td colspan="6">Total for steel</td><td class="amt-col">${money(gt+conn)}</td><td></td></tr>`;
+      <tr class="sum-row total-row"><td colspan="7">Total for steel</td><td class="amt-col">${money(gt+conn)}</td><td></td></tr>`;
   }
   return `
   <div class="group-block ${g.isSteel?'group-steel':''}">
@@ -2932,9 +2938,9 @@ function renderGroup(sec, g, isOptional){
       <thead><tr>
         <th class="num-col">#</th><th class="desc-col">Description</th><th class="unit-col">Unit</th>
         <th class="mode-col">Weight mode</th><th class="calc-col" style="padding:0;"><div class="calc-grid" style="padding:4px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#6B7785;font-weight:700;"><span>Profile</span><span>Nos</span><span>Length&nbsp;/&nbsp;qty</span><span>Total&nbsp;m</span><span>kg/m</span></div></th>
-        <th class="rate-col">Rate KSH</th><th class="amt-col">Amount KSH</th><th class="rm-col"></th>
+        <th class="wt-col" style="text-align:right;">Total kg</th><th class="rate-col">Rate KSH</th><th class="amt-col">Amount KSH</th><th class="rm-col"></th>
       </tr></thead>
-      <tbody>${rows || '<tr><td colspan="8" class="empty-row">No items yet \u2014 add one below.</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="9" class="empty-row">No items yet \u2014 add one below.</td></tr>'}</tbody>
       <tfoot>${tailRows}</tfoot>
     </table>
     ${btn('+ Add item','add-item',{section:sec.id,group:g.id,optional:isOptional?1:0},'btn-add')}
