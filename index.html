@@ -83,6 +83,7 @@ input.f-text, input.f-num, select.f-select, input[type="date"]{
   border:none; border-bottom:1.5px solid var(--line); background:transparent;
   padding:9px 4px; font-size:15px; color:var(--ink); width:100%; border-radius:0;
   min-height:34px; -webkit-tap-highlight-color:transparent;
+  text-overflow:ellipsis; overflow:hidden; white-space:nowrap;
 }
 input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]:focus{
   outline:none; border-bottom-color:var(--blue); background:rgba(33,107,212,0.06);
@@ -137,7 +138,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .items-table .amt-col{width:104px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; padding-top:10px; white-space:nowrap;}
 .items-table .rm-col{width:26px;}
 
-.calc-grid{display:grid; grid-template-columns:auto repeat(4,minmax(48px,1fr)); gap:0; align-items:center;}
+.calc-grid{display:grid; grid-template-columns:170px 64px 64px minmax(60px,1fr) 64px minmax(70px,1fr); gap:0; align-items:center;}
 .calc-grid > *{padding:0 6px; box-sizing:border-box;}
 .calc-grid > *:not(:first-child){border-left:1px solid var(--line);}
 .cell-stack{display:flex; flex-direction:column; gap:3px; min-width:150px;}
@@ -2847,7 +2848,7 @@ function renderItemRow(sec, g, it, idx, isOptional){
   if(isKg){
     if(it.weightMode==='catalog'){
       const catOpts = Object.keys(CATALOG).map(k=>({v:k,l:CATALOG[k].label}));
-      const sizeOpts = (CATALOG[it.category]?CATALOG[it.category].items:[]).map((x,i)=>({v:String(i),l:`${x.size} \u2014 t${x.t} \u2014 ${x.kgPerM} kg/m`}));
+      const sizeOpts = (CATALOG[it.category]?CATALOG[it.category].items:[]).map((x,i)=>({v:String(i),l:x.size.replace(/^\S+\s*/,'')}));
       weightCells = `
         <div class="cell-stack">
           ${selectInput('item',sec.id,g.id,it.id,'category',it.category,catOpts,isOptional)}
@@ -3277,7 +3278,13 @@ document.addEventListener('click', e=>{
     case 'remove-payment-term': removePaymentTerm(parseInt(ds.idx,10)); break;
     case 'new-quote': newQuote(); break;
     case 'load-sample': loadSample(); break;
-    case 'print-quote': window.print(); break;
+    case 'print-quote': {
+      const oldTitle = document.title;
+      document.title = ' ';
+      window.print();
+      setTimeout(()=>{ document.title = oldTitle; }, 500);
+      break;
+    }
     case 'export-json': exportJSON(); break;
     case 'import-json': document.getElementById('importFile').click(); break;
   }
