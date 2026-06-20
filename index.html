@@ -81,10 +81,11 @@ input[type="file"]{display:none;}
 
 input.f-text, input.f-num, select.f-select, input[type="date"]{
   border:none; border-bottom:1.5px solid var(--line); background:transparent;
-  padding:6px 2px; font-size:13.5px; color:var(--ink); width:100%; border-radius:0;
+  padding:9px 4px; font-size:15px; color:var(--ink); width:100%; border-radius:0;
+  min-height:34px; -webkit-tap-highlight-color:transparent;
 }
 input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]:focus{
-  outline:none; border-bottom-color:var(--blue);
+  outline:none; border-bottom-color:var(--blue); background:rgba(33,107,212,0.06);
 }
 .f-num{text-align:right;}
 .w-sm{width:64px;}
@@ -3236,6 +3237,13 @@ function handleFieldChange(target){
   saveState();
 }
 
+document.addEventListener('focusin', e=>{
+  const t = e.target;
+  if(t.matches && t.matches('.f-num, .f-text')){
+    // select all text so tapping into a field lets you immediately type over it
+    requestAnimationFrame(()=>{ try{ t.select(); }catch(err){} });
+  }
+});
 document.addEventListener('input', e=>{
   const t = e.target;
   if(t.matches('.f-text, .f-num, input[type="date"]')){
