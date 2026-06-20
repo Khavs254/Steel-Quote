@@ -297,6 +297,160 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .cp-empty{font-size:12px; color:#A39B86; font-style:italic; padding:8px 0;}
 .cp-synced{font-size:10.5px; color:var(--steel); text-align:right; margin-top:4px;}
 
+/* ==================== MOBILE UI ==================== */
+@media (max-width:680px){
+  /* --- Topbar --- */
+  .topbar{
+    padding:10px 12px;
+    flex-wrap:nowrap;
+    gap:8px;
+    position:sticky; top:0; z-index:100;
+  }
+  .topbar .brand-logo{height:26px;}
+  .topbar h1{font-size:13px; letter-spacing:0;}
+  .topbar .brand small{display:none;}
+  .topbar .actions{display:none; flex-direction:column; gap:0;
+    position:absolute; top:54px; left:0; right:0;
+    background:var(--navy); border-top:1px solid #1E4368; padding:4px 0; z-index:200;}
+  .topbar .actions.open{display:flex;}
+  .topbar .actions .tb-btn{
+    border:none; border-bottom:1px solid #1E4368;
+    border-radius:0; width:100%; justify-content:flex-start;
+    padding:13px 18px; font-size:14px;
+  }
+  .topbar .actions .tb-btn:last-child{border-bottom:none;}
+  #cloudPill.tb-btn{font-size:13px; padding:13px 18px;}
+
+  /* hamburger */
+  .mob-menu-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:36px; height:36px; border:1px solid #3D5C7C;
+    border-radius:var(--r); background:transparent; color:#EAF1F8;
+    cursor:pointer; flex-shrink:0; font-size:18px;
+    margin-left:auto;
+  }
+
+  /* --- Shell --- */
+  .shell{padding:14px 10px 80px;}
+  .hint-banner{font-size:12px;}
+
+  /* --- Meta grid: 2 columns --- */
+  .meta-grid{grid-template-columns:1fr 1fr;}
+
+  /* --- Section card --- */
+  .section-card{padding:14px 12px 14px;}
+  .section-stamp{top:10px; right:10px; font-size:9.5px; padding:2px 6px;}
+  .section-head{gap:6px;}
+  .section-title{font-size:14px;}
+  .section-pitch{max-width:100%; font-size:12px;}
+
+  /* Duplicate / remove section buttons: smaller */
+  .section-head .btn-ghost{font-size:11px; padding:4px 6px;}
+
+  /* --- Group add row: wrap nicely --- */
+  .group-add-row{gap:6px;}
+  .btn-add-alt{font-size:11px; padding:5px 9px;}
+  .btn-add-main{font-size:13px;}
+
+  /* --- Hide wide desktop table, show mobile cards --- */
+  .items-table{display:none;}
+  .mob-items{display:flex; flex-direction:column; gap:10px; margin:8px 0;}
+
+  /* Mobile item card */
+  .mob-item-card{
+    background:#fff; border:1px solid var(--line); border-radius:6px;
+    padding:10px 12px; position:relative;
+  }
+  .mob-item-card .mic-num{
+    position:absolute; top:10px; left:10px;
+    font-family:'IBM Plex Mono',monospace; font-size:10px;
+    color:var(--steel); font-weight:700;
+  }
+  .mob-item-card .mic-rm{
+    position:absolute; top:8px; right:8px;
+    width:22px; height:22px; border-radius:50%;
+    border:1px solid #EAC6C0; background:transparent;
+    color:var(--danger); font-size:10px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mob-item-card .mic-desc{
+    padding:0 28px 8px 20px;
+    border-bottom:1px dashed var(--line);
+    margin-bottom:8px;
+  }
+  .mob-item-card .mic-desc .f-text{font-size:14px; font-weight:600;}
+  .mob-item-card .mic-desc .f-text:last-child{font-size:12px; color:var(--steel); font-weight:400; margin-top:2px;}
+  .mob-item-card .mic-row{
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:6px; flex-wrap:wrap;
+  }
+  .mob-item-card .mic-label{
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.3px; color:var(--steel); flex-shrink:0; min-width:60px;
+  }
+  .mob-item-card .mic-val{flex:1; min-width:0;}
+  .mob-item-card .mic-row select,
+  .mob-item-card .mic-row input{width:100%;}
+  .mob-item-card .mic-profile-row{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;
+  }
+  .mob-item-card .mic-calc-row{
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:6px;
+  }
+  .mob-item-card .mic-footer{
+    display:flex; justify-content:space-between; align-items:center;
+    border-top:1px dashed var(--line); padding-top:8px; margin-top:4px;
+  }
+  .mob-item-card .mic-wt{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--steel);
+  }
+  .mob-item-card .mic-amt{
+    font-family:'IBM Plex Mono',monospace; font-size:15px;
+    font-weight:700; color:var(--navy);
+  }
+  .mob-item-card .mic-rate-box{
+    display:flex; align-items:center; gap:6px;
+  }
+  .mob-item-card .mic-rate-box label{font-size:11px; color:var(--steel); font-weight:600; white-space:nowrap;}
+  .mob-item-card .mic-rate-box input{width:88px;}
+
+  /* group steel tail rows on mobile */
+  .mob-group-tail{
+    background:#F8F6F0; border-radius:6px; padding:8px 12px; margin-top:4px;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .mob-tail-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12.5px;
+  }
+  .mob-tail-row.total{font-weight:700; color:var(--navy); border-top:1.5px solid var(--navy); padding-top:5px; margin-top:2px;}
+  .mob-tail-row .f-num{width:56px; text-align:right;}
+
+  /* section totals full width on mobile */
+  .section-totals{align-items:stretch;}
+  .tot-row{min-width:0; width:100%;}
+
+  /* cloud panel full width on mobile */
+  .cloud-panel{
+    position:fixed; top:54px; left:0; right:0; width:auto; max-height:60vh;
+    border-radius:0; border-left:none; border-right:none;
+  }
+
+  /* payment terms */
+  .pterm-row{flex-wrap:wrap;}
+  .pterm-row .f-text{min-width:0;}
+}
+
+/* Show mob-items only on mobile, hide on desktop */
+@media (min-width:681px){
+  .mob-items{display:none;}
+}
+
+/* hamburger only on mobile */
+.mob-menu-btn{display:none;}
+@media (max-width:680px){
+  .mob-menu-btn{display:flex;}
+}
 </style>
 </head>
 <body>
@@ -310,7 +464,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
     </div>
   </div>
   <div class="spacer"></div>
-  <div class="actions">
+  <div class="actions" id="mobActions">
     <span id="cloudPill"></span>
     <button class="tb-btn" type="button" data-action="load-sample">Load sample</button>
     <button class="tb-btn" type="button" data-action="new-quote">New quote</button>
@@ -318,6 +472,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
     <button class="tb-btn" type="button" data-action="import-json">Open draft</button>
     <button class="tb-btn primary" type="button" data-action="print-quote">Print / Save PDF</button>
   </div>
+  <button class="mob-menu-btn" id="mobMenuBtn" type="button" aria-label="Menu">&#9776;</button>
   <input type="file" id="importFile" accept="application/json">
   <div id="cloudPanel" class="cloud-panel hidden"></div>
 </div>
@@ -3588,6 +3743,162 @@ async function refreshCurrentFromCloud(){
 }
 window.addEventListener('focus', ()=>{ if(cloud.client) refreshCurrentFromCloud(); });
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && cloud.client) refreshCurrentFromCloud(); });
+
+
+/* ==================== MOBILE UI ==================== */
+
+// Hamburger toggle
+document.addEventListener('DOMContentLoaded', ()=>{
+  const btn = document.getElementById('mobMenuBtn');
+  const actions = document.getElementById('mobActions');
+  if(btn && actions){
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      actions.classList.toggle('open');
+    });
+    document.addEventListener('click', e=>{
+      if(!actions.contains(e.target) && e.target !== btn){
+        actions.classList.remove('open');
+      }
+    });
+    // Close menu after any action button is tapped
+    actions.addEventListener('click', ()=> setTimeout(()=>actions.classList.remove('open'), 150));
+  }
+});
+
+/* Mobile item card renderer — shown instead of table rows on narrow screens */
+function renderMobItemCard(sec, g, it, idx, isOptional){
+  const isKg = it.unit === 'Kgs';
+  const sid = sec.id, gid = g.id, iid = it.id, opt = isOptional;
+
+  /* helpers */
+  const ti = (field, value, ph, cls)=> `<input type="text" class="f-text ${cls||''}" ${dattrs('item',sid,gid,iid,field,opt)} value="${esc(value)}" placeholder="${esc(ph||'')}" autocomplete="off">`;
+  const ni = (field, value, cls)=> `<input type="text" inputmode="decimal" class="f-num stepper-plain ${cls||''}" ${dattrs('item',sid,gid,iid,field,opt)} value="${value===0?'0':(value||'')}" placeholder="0">`;
+  const sel = (field, value, options)=>{
+    const opts = options.map(o=>`<option value="${esc(o.v)}" ${o.v===value?'selected':''}>${esc(o.l)}</option>`).join('');
+    return `<select class="f-select" ${dattrs('item',sid,gid,iid,field,opt)}>${opts}</select>`;
+  };
+
+  /* unit selector */
+  const unitSel = sel('unit', it.unit, UNITS.map(u=>({v:u,l:u})));
+
+  /* weight mode */
+  const wtModeSel = isKg ? sel('weightMode', it.weightMode, WEIGHT_MODES) : `<span style="color:var(--steel);font-style:italic;">—</span>`;
+
+  /* profile / calc section */
+  let profileHtml = '';
+  if(isKg){
+    if(it.weightMode==='catalog'){
+      const catOpts = Object.keys(CATALOG).map(k=>({v:k,l:CATALOG[k].label}));
+      const stripPrefixCats = ['IPE','UB','UC'];
+      const sizeOpts = (CATALOG[it.category]?CATALOG[it.category].items:[]).map((x,i)=>{
+        const dims = stripPrefixCats.includes(it.category)?x.size.replace(/^\S+\s*/,''):x.size;
+        const needsT = !stripPrefixCats.includes(it.category)&&x.t!=null;
+        return {v:String(i), l:needsT?`${dims}x${x.t}`:dims};
+      });
+      profileHtml = `
+        <div class="mic-profile-row">
+          <div><div class="mic-label">Category</div>${sel('category',it.category,catOpts)}</div>
+          <div><div class="mic-label">Size</div>${sel('sizeIdx',String(it.sizeIdx||0),sizeOpts)}</div>
+        </div>
+        <div class="mic-calc-row">
+          <div><div class="mic-label">Nos</div>${ni('nos',it.nos,'sm')}</div>
+          <div><div class="mic-label">Len (m)</div>${ni('unitLength',it.unitLength,'sm')}</div>
+          <div><div class="mic-label">kg/m</div>${ni('kgPerM',it.kgPerM,'sm')}</div>
+        </div>`;
+    } else if(it.weightMode==='custom'){
+      const girthChk = `<label class="inline-chk" style="font-size:11px;"><input type="checkbox" ${dattrs('item',sid,gid,iid,'useGirthCalc',opt)} ${it.useGirthCalc?'checked':''}> girth×t calc</label>`;
+      profileHtml = `
+        <div style="margin-bottom:6px;">${girthChk}</div>
+        ${it.useGirthCalc?`<div class="mic-calc-row">
+          <div><div class="mic-label">Girth mm</div><input type="text" inputmode="decimal" class="f-num stepper-plain sm" placeholder="girth" ${dattrs('item',sid,gid,iid,'girth',opt)} value="${it.girth||''}"></div>
+          <div><div class="mic-label">t mm</div><input type="text" inputmode="decimal" class="f-num stepper-plain sm" placeholder="t" ${dattrs('item',sid,gid,iid,'thickness',opt)} value="${it.thickness||''}"></div>
+          <div><div class="mic-label">kg/m</div>${ni('kgPerM',it.kgPerM,'sm')}</div>
+        </div>`:''}
+        <div class="mic-calc-row">
+          <div><div class="mic-label">Nos</div>${ni('nos',it.nos,'sm')}</div>
+          <div><div class="mic-label">Len (m)</div>${ni('unitLength',it.unitLength,'sm')}</div>
+          <div></div>
+        </div>`;
+    } else if(it.weightMode==='plate'){
+      profileHtml = `
+        <div class="mic-calc-row">
+          <div><div class="mic-label">L (mm)</div><input type="text" inputmode="decimal" class="f-num stepper-plain sm" placeholder="L" ${dattrs('item',sid,gid,iid,'plateL',opt)} value="${it.plateL||''}"></div>
+          <div><div class="mic-label">W (mm)</div><input type="text" inputmode="decimal" class="f-num stepper-plain sm" placeholder="W" ${dattrs('item',sid,gid,iid,'plateW',opt)} value="${it.plateW||''}"></div>
+          <div><div class="mic-label">T (mm)</div><input type="text" inputmode="decimal" class="f-num stepper-plain sm" placeholder="T" ${dattrs('item',sid,gid,iid,'plateT',opt)} value="${it.plateT||''}"></div>
+        </div>
+        <div class="mic-calc-row">
+          <div><div class="mic-label">Nos</div>${ni('nos',it.nos,'sm')}</div>
+          <div><div class="mic-label">kg/pc</div><span style="font-family:monospace;font-size:12px;">${round4(plateKgPerPc(it.plateL,it.plateW,it.plateT))}</span></div>
+          <div></div>
+        </div>`;
+    } else {
+      profileHtml = `
+        <div class="mic-calc-row">
+          <div><div class="mic-label">Total kg</div>${ni('directKg',it.directKg,'sm')}</div>
+          <div></div><div></div>
+        </div>`;
+    }
+  } else {
+    profileHtml = `
+      <div class="mic-calc-row">
+        <div><div class="mic-label">Qty</div>${ni('qty',it.qty,'sm')}</div>
+        <div></div><div></div>
+      </div>`;
+  }
+
+  const wt = isKg && itemWeight(it) > 0 ? itemWeight(it).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1})+' kg' : '';
+
+  return `
+  <div class="mob-item-card">
+    <span class="mic-num">${idx+1}</span>
+    <button type="button" class="mic-rm" data-action="remove-item" data-section="${sid}" data-group="${gid}" data-item="${iid}" data-optional="${opt?1:0}">&times;</button>
+    <div class="mic-desc">
+      ${ti('desc', it.desc, 'Description e.g. Columns')}
+      ${ti('detail', it.detail, 'Detail / spec (optional)')}
+    </div>
+    <div class="mic-row">
+      <span class="mic-label">Unit</span>
+      <div class="mic-val">${unitSel}</div>
+      ${isKg?`<span class="mic-label" style="margin-left:8px;">Wt mode</span><div class="mic-val">${wtModeSel}</div>`:''}
+    </div>
+    ${profileHtml}
+    <div class="mic-footer">
+      <div>
+        ${wt?`<div class="mic-wt">&#9166; ${wt}</div>`:''}
+        <div class="mic-rate-box" style="margin-top:4px;">
+          <label>Rate KSH</label>${ni('rate',it.rate,'sm')}
+        </div>
+      </div>
+      <div class="mic-amt">KSH ${money(itemAmount(it))}</div>
+    </div>
+  </div>`;
+}
+
+/* Patch renderGroup to also emit .mob-items alongside the table */
+const _origRenderGroup = renderGroup;
+renderGroup = function(sec, g, isOptional){
+  const html = _origRenderGroup(sec, g, isOptional);
+  const cards = g.items.map((it,idx)=>renderMobItemCard(sec,g,it,idx,isOptional)).join('');
+  const emptyCard = cards ? '' : `<div style="color:#A39B86;font-style:italic;padding:12px 4px;font-size:13px;">No items yet — add one below.</div>`;
+
+  let tailHtml = '';
+  if(g.isSteel){
+    const gt = groupTotal(g);
+    const conn = gt * num(g.connectionsPct)/100;
+    const connPctInput = `<input type="text" inputmode="decimal" class="f-num w-xs" data-scope="group" data-section="${sec.id}" data-group="${g.id}" data-field="connectionsPct" data-optional="${isOptional?1:0}" data-path="${path('group',sec.id,g.id,'','connectionsPct',isOptional)}" value="${g.connectionsPct}">`;
+    tailHtml = `
+    <div class="mob-group-tail">
+      <div class="mob-tail-row"><span>Steel sub-total</span><b class="f-num">KSH ${money(gt)}</b></div>
+      <div class="mob-tail-row"><span>MS Connections ${connPctInput}%</span><b class="f-num">KSH ${money(conn)}</b></div>
+      <div class="mob-tail-row total"><span>Total for steel</span><b class="f-num">KSH ${money(gt+conn)}</b></div>
+    </div>`;
+  }
+
+  const mobBlock = `<div class="mob-items">${emptyCard}${cards}${tailHtml}</div>`;
+  // Insert mob block after group-block opening div (before desktop table)
+  return html.replace('<table class="items-table">', mobBlock + '<table class="items-table">');
+};
 
 /* ----------------------- Cloud UI rendering ----------------------- */
 function cloudStatusLabel(){
