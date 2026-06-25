@@ -136,7 +136,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .items-table .wt-col{width:80px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--navy); font-weight:600; padding-top:10px; white-space:nowrap;}
 .items-table .wt-col th{text-align:right;}
 .items-table .amt-col{width:104px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; padding-top:10px; white-space:nowrap;}
-.items-table .rm-col{width:26px;}
+.items-table .rm-col{width:104px;}
 
 .calc-grid{display:grid; grid-template-columns:170px 64px 64px minmax(60px,1fr) 64px minmax(70px,1fr); gap:0; align-items:center;}
 .calc-grid > *{padding:0 6px; box-sizing:border-box;}
@@ -168,6 +168,9 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .btn-danger-text{color:var(--danger);}
 .btn-icon{width:24px; height:24px; padding:0; line-height:1; border-radius:50%; font-size:11px;}
 .btn-danger{color:var(--danger); border-color:#EAC6C0;}
+.item-actions{display:flex; gap:4px; justify-content:flex-end; align-items:center;}
+.item-actions .btn-icon{flex:0 0 24px;}
+.item-actions .btn-icon:disabled{opacity:.35; cursor:not-allowed; border-color:var(--line); color:#A39B86;}
 .group-add-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;}
 
 /* ---------- Totals ---------- */
@@ -440,8 +443,9 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
     <span id="cloudPill"></span>
     <button class="tb-btn" type="button" data-action="load-sample">Load sample</button>
     <button class="tb-btn" type="button" data-action="new-quote">New quote</button>
-    <button class="tb-btn" type="button" data-action="export-json">Save draft (.json)</button>
-    <button class="tb-btn" type="button" data-action="import-json">Open draft</button>
+    <button class="tb-btn" type="button" data-action="save-draft">Save draft</button>
+    <button class="tb-btn" type="button" data-action="open-draft">Open draft</button>
+    <button class="tb-btn" type="button" data-action="export-excel">Export Excel</button>
     <button class="tb-btn primary" type="button" data-action="print-quote">Print / Save PDF</button>
   </div>
   <input type="file" id="importFile" accept="application/json">
@@ -2914,6 +2918,27 @@ function addItem(sectionId, groupId, isOptional){
   g.items.push(newLineItem(defaults));
   saveState(); rerender();
 }
+function lineItemGroup(sectionId, groupId, isOptional){
+  const sec = findSection(sectionId); if(!sec) return null;
+  return (isOptional?sec.optionalGroups:sec.groups).find(g=>g.id===groupId) || null;
+}
+function duplicateItem(sectionId, groupId, itemId, isOptional){
+  const g = lineItemGroup(sectionId, groupId, isOptional); if(!g) return;
+  const idx = g.items.findIndex(i=>i.id===itemId); if(idx<0) return;
+  const copy = JSON.parse(JSON.stringify(g.items[idx]));
+  copy.id = uid();
+  g.items.splice(idx+1, 0, copy);
+  saveState(); rerender();
+}
+function moveItem(sectionId, groupId, itemId, isOptional, dir){
+  const g = lineItemGroup(sectionId, groupId, isOptional); if(!g) return;
+  const idx = g.items.findIndex(i=>i.id===itemId); if(idx<0) return;
+  const next = idx + dir;
+  if(next<0 || next>=g.items.length) return;
+  const item = g.items.splice(idx, 1)[0];
+  g.items.splice(next, 0, item);
+  saveState(); rerender();
+}
 function removeItem(sectionId, groupId, itemId, isOptional){
   const sec = findSection(sectionId); if(!sec) return;
   const g = (isOptional?sec.optionalGroups:sec.groups).find(g=>g.id===groupId); if(!g) return;
@@ -3055,6 +3080,11 @@ function renderMeta(){
 /* ----------------------- Render: a single line item row ----------------------- */
 function renderItemRow(sec, g, it, idx, isOptional){
   const isKg = it.unit==='Kgs';
+  const upBtn = btn('↑','move-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0,dir:-1},'btn-icon');
+  const downBtn = btn('↓','move-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0,dir:1},'btn-icon');
+  const copyBtn = btn('⧉','duplicate-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon');
+  const deleteBtn = btn('\u2715','remove-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon btn-danger');
+  const actions = `<div class="item-actions">${upBtn.replace('<button ','<button title="Move up" aria-label="Move item up" '+(idx===0?'disabled ':' '))}${downBtn.replace('<button ','<button title="Move down" aria-label="Move item down" '+(idx===g.items.length-1?'disabled ':' '))}${copyBtn.replace('<button ','<button title="Duplicate item" aria-label="Duplicate item" ')}${deleteBtn.replace('<button ','<button title="Remove item" aria-label="Remove item" ')}</div>`;
   let weightCells = '';
   if(isKg){
     if(it.weightMode==='catalog'){
@@ -3132,7 +3162,7 @@ function renderItemRow(sec, g, it, idx, isOptional){
     <td class="wt-col">${it.unit==='Kgs' ? (itemWeight(it)>0 ? itemWeight(it).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1})+' kg' : '\u2014') : '\u2014'}</td>
     <td class="rate-col">${stepperInput('item',sec.id,g.id,it.id,'rate',it.rate,isOptional,{cls:'sm',step:10})}</td>
     <td class="amt-col">${money(itemAmount(it))}</td>
-    <td class="rm-col">${btn('\u2715','remove-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon btn-danger')}</td>
+    <td class="rm-col">${actions}</td>
   </tr>`;
 }
 
@@ -3484,6 +3514,11 @@ function handleFieldChange(target){
   }
   saveState();
 }
+function isUnfinishedNumericInput(target){
+  if(!target || !target.matches || !target.matches('.f-num')) return false;
+  const v = String(target.value || '').trim();
+  return v==='.' || v==='-.' || /^-?\d+\.$/.test(v);
+}
 
 /* focusin auto-select removed - rerender() already restores cursor position */
 /* document.addEventListener('focusin', e=>{
@@ -3496,6 +3531,14 @@ function handleFieldChange(target){
 document.addEventListener('input', e=>{
   const t = e.target;
   if(t.matches('.f-text, .f-num, input[type="date"]')){
+    handleFieldChange(t);
+    if(!isUnfinishedNumericInput(t)) rerender();
+  }
+});
+document.addEventListener('focusout', e=>{
+  const t = e.target;
+  if(t.matches && isUnfinishedNumericInput(t)){
+    t.value = num(t.value);
     handleFieldChange(t);
     rerender();
   }
@@ -3538,6 +3581,8 @@ document.addEventListener('click', e=>{
     case 'add-group': addGroup(ds.section, isOpt, GROUP_PRESETS[ds.preset]||GROUP_PRESETS.custom); break;
     case 'remove-group': removeGroup(ds.section, ds.group, isOpt); break;
     case 'add-item': addItem(ds.section, ds.group, isOpt); break;
+    case 'duplicate-item': duplicateItem(ds.section, ds.group, ds.item, isOpt); break;
+    case 'move-item': moveItem(ds.section, ds.group, ds.item, isOpt, parseInt(ds.dir,10)||0); break;
     case 'remove-item': removeItem(ds.section, ds.group, ds.item, isOpt); break;
     case 'add-payment-term': addPaymentTerm(); break;
     case 'remove-payment-term': removePaymentTerm(parseInt(ds.idx,10)); break;
@@ -3550,7 +3595,10 @@ document.addEventListener('click', e=>{
       setTimeout(()=>{ document.title = oldTitle; }, 500);
       break;
     }
+    case 'save-draft': saveDraft(); break;
     case 'export-json': exportJSON(); break;
+    case 'export-excel': exportExcel(); break;
+    case 'open-draft': openDraft(); break;
     case 'import-json': document.getElementById('importFile').click(); break;
   }
 });
@@ -3561,11 +3609,132 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 function exportJSON(){
   const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  downloadBlob(blob, fileBaseName() + '.json');
+}
+async function saveDraft(){
+  saveState();
+  if(cloud.client){
+    await saveCurrentQuoteToCloud();
+    alert('Draft saved to Supabase cloud.');
+  } else {
+    exportJSON();
+  }
+}
+function openDraft(){
+  if(cloud.client){
+    cloud.panelOpen = true;
+    fetchQuotesList();
+    rerenderCloud();
+  } else {
+    document.getElementById('importFile').click();
+  }
+}
+function fileBaseName(){
+  return (state.meta.project || state.meta.clientName || 'ropa-quote').replace(/[^a-z0-9\-]+/gi,'_');
+}
+function downloadBlob(blob, filename){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = (state.meta.project||'ropa-quote').replace(/[^a-z0-9\-]+/gi,'_') + '.json';
+  a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+function excelCell(v, tag){
+  const name = tag || 'td';
+  return `<${name}>${esc(v==null?'':v)}</${name}>`;
+}
+function excelMoney(n){ return round2(n); }
+function excelItemRow(no, groupName, it){
+  const c = printRowCells(it);
+  const desc = `${it.desc||''}${it.detail?` - ${it.detail}`:''}`;
+  return `<tr>${[
+    no, groupName, desc, c.nos, c.unitLength, c.totalLength, c.wpu, it.unit, c.qty, it.rate, excelMoney(itemAmount(it))
+  ].map(v=>excelCell(v)).join('')}</tr>`;
+}
+function exportExcel(){
+  const dateStr = fmtDateLong(state.meta.quoteDate);
+  let body = `
+    <h1>Ropa Engineering Co. Ltd - Steel Quotation</h1>
+    <table>
+      <tr><th>Client</th><td>${esc(state.meta.clientName)}</td><th>Date</th><td>${esc(dateStr)}</td></tr>
+      <tr><th>Project</th><td>${esc(state.meta.project)}</td><th>Reference</th><td>${esc(state.meta.quoteRef)}</td></tr>
+      <tr><th>Location</th><td>${esc(state.meta.location)}</td><th>Prepared by</th><td>${esc(state.meta.preparedBy)}</td></tr>
+    </table>`;
+
+  state.sections.forEach(sec=>{
+    let n = 0;
+    let rows = '';
+    sec.groups.forEach(g=>{
+      g.items.forEach(it=>{ n++; rows += excelItemRow(n, g.name, it); });
+      if(g.isSteel){
+        const gt = groupTotal(g);
+        const conn = gt*num(g.connectionsPct)/100;
+        rows += `<tr class="sum"><td colspan="10">Steel Sub-total</td><td>${excelMoney(gt)}</td></tr>`;
+        rows += `<tr class="sum"><td colspan="10">MS Connections (${esc(g.connectionsPct)}%)</td><td>${excelMoney(conn)}</td></tr>`;
+        rows += `<tr class="total"><td colspan="10">Total for Steel</td><td>${excelMoney(gt+conn)}</td></tr>`;
+      }
+    });
+    const calc = sectionCalc(sec);
+    rows += `<tr class="total"><td colspan="10">SUB TOTAL</td><td>${excelMoney(calc.subTotal)}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="10">ADD ${esc(sec.vatPct)}% VAT</td><td>${excelMoney(calc.vatAmt)}</td></tr>`;
+    rows += `<tr class="grand"><td colspan="10">GRAND TOTAL (inclusive of VAT)</td><td>${excelMoney(calc.grandTotal)}</td></tr>`;
+
+    body += `
+      <h2>${esc(sec.title || state.meta.project || 'Quote section')}</h2>
+      ${sec.roofPitch?`<p>Roof Pitch = ${esc(sec.roofPitch)} degrees</p>`:''}
+      <table>
+        <thead><tr>${['#','Group','Description','Nos','Len','Total M','kg/m','Unit','Qty','Rate','Amount'].map(h=>excelCell(h,'th')).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    if(sec.optionalEnabled){
+      let on = 0;
+      let optRows = '';
+      sec.optionalGroups.forEach(g=>{
+        g.items.forEach(it=>{ on++; optRows += excelItemRow(on, g.name, it); });
+      });
+      optRows += `<tr class="sum"><td colspan="10">TOTAL</td><td>${excelMoney(calc.optSubTotal)}</td></tr>`;
+      optRows += `<tr class="sum"><td colspan="10">ADD ${esc(sec.optionalVatPct)}% VAT</td><td>${excelMoney(calc.optVat)}</td></tr>`;
+      optRows += `<tr class="grand"><td colspan="10">GRAND TOTAL</td><td>${excelMoney(calc.optGrand)}</td></tr>`;
+      body += `
+        <h3>Optional Items</h3>
+        <table>
+          <thead><tr>${['#','Group','Description','Nos','Len','Total M','kg/m','Unit','Qty','Rate','Amount'].map(h=>excelCell(h,'th')).join('')}</tr></thead>
+          <tbody>${optRows}</tbody>
+        </table>`;
+    }
+  });
+
+  if(state.sections.length>1){
+    const summaryRows = state.sections.map(sec=>`<tr><td>${esc(sec.title)}</td><td>${excelMoney(sectionCalc(sec).grandTotal)}</td></tr>`).join('');
+    body += `
+      <h2>Combined Quote Summary</h2>
+      <table>
+        <thead><tr><th>Structure / Section</th><th>Grand Total (KSH)</th></tr></thead>
+        <tbody>${summaryRows}</tbody>
+        <tfoot><tr class="grand"><td>Total Quote Value</td><td>${excelMoney(documentGrandTotal())}</td></tr></tfoot>
+      </table>`;
+  }
+
+  body += `
+    <h2>Payment Terms</h2>
+    <table>
+      <thead><tr><th>#</th><th>Term</th><th>Percent</th></tr></thead>
+      <tbody>${state.paymentTerms.map((pt,i)=>`<tr><td>${i+1}</td><td>${esc(pt.label)}</td><td>${esc(pt.pct)}</td></tr>`).join('')}</tbody>
+    </table>`;
+
+  const html = `<!doctype html><html><head><meta charset="UTF-8">
+    <style>
+      body{font-family:Arial,sans-serif;}
+      table{border-collapse:collapse; margin-bottom:18px;}
+      th,td{border:1px solid #999; padding:4px 6px;}
+      th{background:#EEF3F8;}
+      .sum td{background:#F5F2EA; font-weight:600;}
+      .total td{background:#E6ECF2; font-weight:700;}
+      .grand td{background:#14304F; color:#fff; font-weight:700;}
+    </style></head><body>${body}</body></html>`;
+  const blob = new Blob([html], {type:'application/vnd.ms-excel;charset=utf-8'});
+  downloadBlob(blob, fileBaseName() + '.xls');
 }
 function importJSON(e){
   const file = e.target.files[0]; if(!file) return;
@@ -3802,13 +3971,14 @@ function renderCloudPanel(){
       </div>`).join('') || `<div class="cp-empty">${cloud.loadingList?'Loading\u2026':'No saved quotes yet.'}</div>`;
     inner = `
       <div class="cp-section">
-        <div class="cp-row-between"><h3>Your cloud quotes</h3><button type="button" class="btn-ghost" data-action="disconnect-cloud">Disconnect</button></div>
+        <div class="cp-row-between"><h3>Your cloud drafts</h3><button type="button" class="btn-ghost" data-action="disconnect-cloud">Disconnect</button></div>
         ${cloud.error?`<div class="cp-error">${esc(cloud.error)}</div>`:''}
         <div class="cp-quote-list">${rows}</div>
         <div class="cp-row-between">
           <button type="button" class="btn btn-add" data-action="new-cloud-quote">+ New cloud quote</button>
           <button type="button" class="btn-ghost" data-action="refresh-cloud-list">Refresh</button>
         </div>
+        <button type="button" class="btn-ghost" data-action="import-json">Open local JSON file</button>
         ${cloud.lastSavedAt?`<div class="cp-synced">Last synced ${cloud.lastSavedAt.toLocaleTimeString()}</div>`:''}
       </div>`;
   }
