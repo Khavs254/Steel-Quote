@@ -104,6 +104,15 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .section-title{font-family:'Roboto Slab',serif; font-size:16px; font-weight:700; color:var(--navy); max-width:340px; border-bottom-color:var(--navy)!important;}
 .section-pitch{max-width:170px; font-size:12.5px; color:var(--steel);}
 .spacer{flex:1;}
+.section-note-row{margin:2px 0 14px;}
+.section-note{
+  width:100%; resize:vertical; min-height:34px; font-size:12.5px; line-height:1.4;
+  color:var(--steel); font-family:inherit; padding:6px 8px; border:1px solid var(--line);
+  border-radius:var(--r); background:#FCFBF8;
+}
+.section-note:focus{border-color:var(--blue); background:#fff;}
+.print-opts{display:flex; flex-direction:column; gap:8px;}
+.print-opts .inline-chk{font-size:13px; align-items:flex-start; gap:8px;}
 
 /* ---------- Groups / item tables ---------- */
 .groups-list{display:flex; flex-direction:column; gap:16px; margin-bottom:10px;}
@@ -205,6 +214,10 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
     font-family:Arial,Helvetica,sans-serif; color:#111;
   }
   .print-page:last-child{page-break-after:auto;}
+  .print-flow{width:100%;}
+  .print-flow-section{width:100%; margin-bottom:14px;}
+  .p-structure-heading{page-break-after:avoid; break-after:avoid-page; margin-top:18px;}
+  .print-flow-section:first-of-type .p-structure-heading{margin-top:0;}
 
   .p-letterhead{display:flex; align-items:center; gap:14px; padding-bottom:8px; border-bottom:2px solid #14304F; margin-bottom:10px;}
   .p-logo{height:62px; flex:0 0 auto;}
@@ -227,15 +240,21 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
   .p-colhead1 th[rowspan="2"]:empty,.p-colhead2 th:empty{background:#DDE5EE;}
   .p-no{text-align:center; width:22px;}
   .p-desc{text-align:left;}
+  .p-profile{text-align:left; font-size:8.3pt; color:#333; white-space:nowrap;}
   .p-detail{font-size:7.8pt; color:#555; font-style:italic;}
   .p-num{text-align:right; white-space:nowrap;}
   .p-unit{text-align:center; width:34px;}
   .p-amt{text-align:right; white-space:nowrap; font-weight:600;}
   .p-grouphead td{background:#14304F; color:#fff; font-weight:700; padding:4px 6px; letter-spacing:.4px;}
+  .p-grouphead{page-break-after:avoid; break-after:avoid-page;}
+  tr{page-break-inside:avoid; break-inside:avoid-page;}
   .p-sumrow td{background:#F5F2EA; font-weight:600;}
   .p-sumrow.p-bold td{background:#E6ECF2; font-weight:700; color:#14304F; font-size:9.5pt;}
 
   .p-pitch{font-size:9.5pt; font-style:italic; margin:4px 0 10px;}
+  .p-pitch-note{margin:4px 0 10px;}
+  .p-note{font-size:9.5pt; margin:2px 0; color:#222;}
+  .p-note b{color:#14304F;}
   .p-section-title{font-family:Georgia,serif; font-weight:700; font-size:11pt; color:#14304F; margin:14px 0 6px; border-bottom:1px solid #14304F; padding-bottom:2px;}
   .p-opt-table th{text-transform:uppercase; font-size:8pt; background:#EEF3F8;}
 
@@ -291,6 +310,9 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .cp-label input{font-size:12.5px; text-transform:none; letter-spacing:0; font-weight:500;}
 .cp-error{background:#FBEAE7; color:var(--danger); font-size:11.5px; padding:8px 10px; border-radius:5px; margin-bottom:10px;}
 .cp-row-between{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;}
+.cp-header-actions{display:flex; align-items:center; gap:6px;}
+.cp-close{font-size:13px; color:var(--steel); flex:0 0 auto;}
+.cp-close:hover{color:var(--danger);}
 .cp-quote-list{display:flex; flex-direction:column; gap:6px; max-height:280px; overflow:auto; margin-bottom:10px;}
 .cp-quote-row{display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:6px; padding:2px;}
 .cp-quote-row.active{border-color:var(--blue); background:#F3F7FB;}
@@ -2132,50 +2154,176 @@ const CATALOG = {
   "items": [
    {
     "size": "50x50",
+    "t": 1.5,
+    "kgPerM": 1.88,
+    "rateKg": null
+   },
+   {
+    "size": "50x50",
     "t": 2,
-    "kgPerM": 2.02,
+    "kgPerM": 2.32,
+    "rateKg": null
+   },
+   {
+    "size": "50x50",
+    "t": 3,
+    "kgPerM": 3.62,
     "rateKg": null
    },
    {
     "size": "65x50",
     "t": 2,
-    "kgPerM": 2.15,
+    "kgPerM": 2.46,
+    "rateKg": null
+   },
+   {
+    "size": "65x50",
+    "t": 3,
+    "kgPerM": 3.60,
     "rateKg": null
    },
    {
     "size": "75x50",
     "t": 2,
-    "kgPerM": 2.5,
+    "kgPerM": 2.62,
     "rateKg": null
    },
    {
     "size": "75x50",
     "t": 3,
-    "kgPerM": 3.68,
+    "kgPerM": 3.84,
     "rateKg": null
    },
    {
     "size": "100x50",
     "t": 2,
-    "kgPerM": 2.71,
+    "kgPerM": 3.13,
     "rateKg": null
    },
    {
     "size": "100x50",
     "t": 3,
-    "kgPerM": 3.99,
+    "kgPerM": 4.91,
+    "rateKg": null
+   },
+   {
+    "size": "115x50",
+    "t": 2,
+    "kgPerM": 3.85,
+    "rateKg": null
+   },
+   {
+    "size": "115x50",
+    "t": 2.5,
+    "kgPerM": 4.81,
+    "rateKg": null
+   },
+   {
+    "size": "115x50",
+    "t": 3,
+    "kgPerM": 5.78,
+    "rateKg": null
+   },
+   {
+    "size": "127x50",
+    "t": 2,
+    "kgPerM": 4.05,
+    "rateKg": null
+   },
+   {
+    "size": "127x50",
+    "t": 2.5,
+    "kgPerM": 5.06,
+    "rateKg": null
+   },
+   {
+    "size": "127x50",
+    "t": 3,
+    "kgPerM": 6.07,
+    "rateKg": null
+   },
+   {
+    "size": "140x50",
+    "t": 2,
+    "kgPerM": 4.24,
+    "rateKg": null
+   },
+   {
+    "size": "140x50",
+    "t": 2.5,
+    "kgPerM": 5.30,
+    "rateKg": null
+   },
+   {
+    "size": "140x50",
+    "t": 3,
+    "kgPerM": 6.36,
     "rateKg": null
    },
    {
     "size": "150x50",
     "t": 2,
-    "kgPerM": 3.09,
+    "kgPerM": 3.94,
     "rateKg": null
    },
    {
     "size": "150x50",
     "t": 3,
-    "kgPerM": 4.58,
+    "kgPerM": 6.21,
+    "rateKg": null
+   },
+   {
+    "size": "152x50",
+    "t": 2,
+    "kgPerM": 4.44,
+    "rateKg": null
+   },
+   {
+    "size": "152x50",
+    "t": 2.5,
+    "kgPerM": 5.55,
+    "rateKg": null
+   },
+   {
+    "size": "152x50",
+    "t": 3,
+    "kgPerM": 6.66,
+    "rateKg": null
+   },
+   {
+    "size": "165x50",
+    "t": 2,
+    "kgPerM": 4.65,
+    "rateKg": null
+   },
+   {
+    "size": "165x50",
+    "t": 2.5,
+    "kgPerM": 5.81,
+    "rateKg": null
+   },
+   {
+    "size": "165x50",
+    "t": 3,
+    "kgPerM": 6.98,
+    "rateKg": null
+   },
+   {
+    "size": "178x50",
+    "t": 2,
+    "kgPerM": 4.72,
+    "rateKg": null
+   },
+   {
+    "size": "178x50",
+    "t": 2.5,
+    "kgPerM": 5.90,
+    "rateKg": null
+   },
+   {
+    "size": "178x50",
+    "t": 3,
+    "kgPerM": 7.08,
     "rateKg": null
    }
   ]
@@ -2532,6 +2680,77 @@ const CATALOG = {
    }
   ]
  },
+ "Cee": {
+  "label": "Cee",
+  "items": [
+   {
+    "size": "C100",
+    "t": 2,
+    "kgPerM": 3.34,
+    "rateKg": null
+   },
+   {
+    "size": "C115",
+    "t": 2,
+    "kgPerM": 3.85,
+    "rateKg": null
+   },
+   {
+    "size": "C127",
+    "t": 2,
+    "kgPerM": 4.05,
+    "rateKg": null
+   },
+   {
+    "size": "C140",
+    "t": 2,
+    "kgPerM": 4.24,
+    "rateKg": null
+   },
+   {
+    "size": "C152",
+    "t": 2,
+    "kgPerM": 4.44,
+    "rateKg": null
+   },
+   {
+    "size": "C165",
+    "t": 2,
+    "kgPerM": 4.65,
+    "rateKg": null
+   },
+   {
+    "size": "C165x2.5",
+    "t": 2.5,
+    "kgPerM": 5.94,
+    "rateKg": null
+   },
+   {
+    "size": "C165x2.5B",
+    "t": 2.5,
+    "kgPerM": 6.14,
+    "rateKg": null
+   },
+   {
+    "size": "C178",
+    "t": 2.5,
+    "kgPerM": 5.9,
+    "rateKg": null
+   },
+   {
+    "size": "C178x2.5",
+    "t": 2.5,
+    "kgPerM": 6.4,
+    "rateKg": null
+   },
+   {
+    "size": "C178x3.0",
+    "t": 3,
+    "kgPerM": 8.17,
+    "rateKg": null
+   }
+  ]
+ },
  "U-Chls": {
   "label": "U-Channel",
   "items": [
@@ -2719,7 +2938,7 @@ function newGroup(over){
 }
 function newSection(over){
   return Object.assign({
-    id:uid(), title:'New Structure', roofPitch:'',
+    id:uid(), title:'New Structure', roofPitch:'', note:'',
     groups:[ newGroup() ],
     vatPct:16,
     optionalEnabled:false, optionalGroups:[ newGroup({name:'OPTIONAL ITEMS', isSteel:false}) ], optionalVatPct:16
@@ -2736,7 +2955,8 @@ function defaultState(){
     id: uuid(),
     meta:{
       clientName:'', clientTagline:'', project:'', location:'',
-      quoteDate: todayISO(), quoteRef:'', preparedBy:'Dennis Kihiu', defaultVat:16, defaultConnections:10
+      quoteDate: todayISO(), quoteRef:'', preparedBy:'Dennis Kihiu', defaultVat:16, defaultConnections:10,
+      printCompact:true, printRepeatLetterhead:false
     },
     sections: [ newSection() ],
     paymentTerms: [
@@ -3074,6 +3294,13 @@ function renderMeta(){
       <label>Default VAT % <input type="text" inputmode="decimal" class="f-num" data-scope="meta" data-field="defaultVat" data-path="meta||||defaultVat|0" value="${m.defaultVat}"></label>
       <label>Default connections % <input type="text" inputmode="decimal" class="f-num" data-scope="meta" data-field="defaultConnections" data-path="meta||||defaultConnections|0" value="${m.defaultConnections}"></label>
     </div>
+  </section>
+  <section class="card print-settings-card">
+    <div class="card-head"><h2>Printing options</h2></div>
+    <div class="print-opts">
+      <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printCompact" data-path="meta||||printCompact|0" ${m.printCompact!==false?'checked':''}> Compact print layout \u2014 pack structures together to fill each page, instead of one page per structure</label>
+      <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printRepeatLetterhead" data-path="meta||||printRepeatLetterhead|0" ${m.printRepeatLetterhead?'checked':''} ${m.printCompact===false?'disabled':''}> Repeat full letterhead for every structure (otherwise shown once at the top)</label>
+    </div>
   </section>`;
 }
 
@@ -3222,6 +3449,9 @@ function renderSection(sec, secIdx){
       ${btn('Duplicate','duplicate-section',{section:sec.id},'btn-ghost')}
       ${btn('Remove section','remove-section',{section:sec.id},'btn-ghost btn-danger-text')}
     </div>
+    <div class="section-note-row">
+      <textarea class="f-text section-note" rows="1" placeholder="Note for this structure (shown under the quote table when printed)" data-scope="section" data-section="${sec.id}" data-field="note" data-path="${path('section',sec.id,'','','note',0)}">${esc(sec.note)}</textarea>
+    </div>
 
     <div class="groups-list">${groupsHtml}</div>
     <div class="group-add-row">
@@ -3330,11 +3560,30 @@ function printRowCells(it){
 function round2(n){ return Math.round(n*100)/100; }
 function nf(n){ return n===''||n==null ? '' : Number(n).toLocaleString('en-KE',{maximumFractionDigits:2}); }
 
+function itemProfileText(it){
+  if(it.unit!=='Kgs' || it.weightMode!=='catalog') return '';
+  const cat = CATALOG[it.category];
+  if(!cat) return '';
+  const x = cat.items[it.sizeIdx||0];
+  if(!x) return cat.label||'';
+  let sizeLabel;
+  if(it.category==='Black Pipes'){
+    sizeLabel = `Class ${x.class} - ${x.bore} - OD ${x.size} x ${x.t}`;
+  } else {
+    const stripPrefixCats = ['IPE','UB','UC'];
+    const dims = stripPrefixCats.includes(it.category) ? x.size.replace(/^\S+\s*/,'') : x.size;
+    const needsThickness = !stripPrefixCats.includes(it.category) && x.t!=null;
+    sizeLabel = needsThickness ? `${dims}x${x.t}` : dims;
+  }
+  return `${cat.label} ${sizeLabel}`;
+}
+
 function printItemRow(no, it){
   const c = printRowCells(it);
   return `<tr>
     <td class="p-no">${no}</td>
     <td class="p-desc">${esc(it.desc)||'\u2014'}${it.detail?`<div class="p-detail">${esc(it.detail)}</div>`:''}</td>
+    <td class="p-profile">${esc(itemProfileText(it))||'\u2014'}</td>
     <td class="p-num">${nf(c.nos)}</td>
     <td class="p-num">${nf(c.unitLength)}</td>
     <td class="p-num">${nf(c.totalLength)}</td>
@@ -3346,13 +3595,14 @@ function printItemRow(no, it){
   </tr>`;
 }
 function printGroupHeaderRow(name){
-  return `<tr class="p-grouphead"><td colspan="10">${esc(name)}</td></tr>`;
+  return `<tr class="p-grouphead"><td colspan="11">${esc(name)}</td></tr>`;
 }
 function printSumRow(label, amount, bold){
-  return `<tr class="p-sumrow ${bold?'p-bold':''}"><td colspan="9">${esc(label)}</td><td class="p-amt">${money(amount)}</td></tr>`;
+  return `<tr class="p-sumrow ${bold?'p-bold':''}"><td colspan="10">${esc(label)}</td><td class="p-amt">${money(amount)}</td></tr>`;
 }
 
-function renderPrintSection(sec, idx, isLast){
+function renderPrintSection(sec, idx, isLast, opts){
+  opts = opts || {};
   let n = 0;
   let bodyRows = '';
   sec.groups.forEach(g=>{
@@ -3394,20 +3644,38 @@ function renderPrintSection(sec, idx, isLast){
       </table>`;
   }
 
-  return `
-  <div class="print-page">
-    ${printLetterhead(sec)}
+  // Header: full letterhead, or (in compact mode without repeat) just a compact structure heading
+  let headerHtml;
+  if(!opts.compact){
+    headerHtml = printLetterhead(sec);
+  } else if(opts.repeatLetterhead){
+    headerHtml = printLetterhead(sec);
+  } else if(opts.showOverallLetterhead){
+    headerHtml = printLetterhead(sec);
+  } else {
+    headerHtml = `<div class="p-section-title p-structure-heading">SHEET ${String(idx+1).padStart(2,'0')} \u2014 ${esc(sec.title)}</div>`;
+  }
+
+  const innerHtml = `
+    ${headerHtml}
     <table class="p-table">
       <thead>
-        <tr class="p-colhead1"><th rowspan="2">#</th><th rowspan="2">DESCRIPTION</th><th colspan="3">DIMENSIONS</th><th rowspan="2">kg/m</th><th rowspan="2">UN</th><th rowspan="2">QTY</th><th rowspan="2">RATE</th><th rowspan="2">AMT</th></tr>
+        <tr class="p-colhead1"><th rowspan="2">#</th><th rowspan="2">DESCRIPTION</th><th rowspan="2">PROFILE</th><th colspan="3">DIMENSIONS</th><th rowspan="2">kg/m</th><th rowspan="2">UN</th><th rowspan="2">QTY</th><th rowspan="2">RATE</th><th rowspan="2">AMT</th></tr>
         <tr class="p-colhead2"><th>NOS</th><th>LEN</th><th>TOT M</th></tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
-    ${sec.roofPitch?`<div class="p-pitch">Roof Pitch = ${esc(sec.roofPitch)}\u00b0</div>`:''}
+    ${sec.roofPitch || sec.note ? `<div class="p-pitch-note">
+      ${sec.roofPitch?`<div class="p-pitch">Roof Pitch = ${esc(sec.roofPitch)}\u00b0</div>`:''}
+      ${sec.note?`<div class="p-note"><b>Note:</b> ${esc(sec.note)}</div>`:''}
+    </div>` : ''}
     ${optionalHtml}
-    ${isLast ? printClosing() : ''}
-  </div>`;
+    ${(!opts.compact && isLast) ? printClosing() : ''}`;
+
+  if(!opts.compact){
+    return `<div class="print-page">${innerHtml}</div>`;
+  }
+  return `<div class="print-flow-section">${innerHtml}</div>`;
 }
 
 function printLetterhead(sec){
@@ -3450,28 +3718,45 @@ function printClosing(){
   </div>`;
 }
 
-function renderPrintSummaryPage(){
+function renderPrintSummaryPage(compact){
   if(state.sections.length<2) return '';
   const rows = state.sections.map(sec=>`<tr><td class="p-desc">${esc(sec.title)}</td><td class="p-amt">${money(sectionCalc(sec).grandTotal)}</td></tr>`).join('');
-  return `<div class="print-page">
+  const inner = `
     <div class="p-section-title">COMBINED QUOTE SUMMARY</div>
     <table class="p-table p-opt-table">
       <thead><tr><th>Structure / Section</th><th>Grand Total (KSH)</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="p-sumrow p-bold"><td>TOTAL QUOTE VALUE</td><td class="p-amt">${money(documentGrandTotal())}</td></tr></tfoot>
-    </table>
-  </div>`;
+    </table>`;
+  return compact ? `<div class="print-flow-section">${inner}</div>` : `<div class="print-page">${inner}</div>`;
 }
 
 function renderPrintArea(){
-  const pages = state.sections.map((sec,i)=>renderPrintSection(sec,i,i===state.sections.length-1 && state.sections.length===1)).join('');
-  const summary = state.sections.length>1 ? renderPrintSummaryPage() : '';
-  let closingPage = '';
-  if(state.sections.length>1){
-    const lastSec = state.sections[state.sections.length-1];
-    closingPage = `<div class="print-page">${printLetterhead(lastSec)}${printClosing()}</div>`;
+  const m = state.meta;
+  const compact = m.printCompact !== false;
+  const repeatLetterhead = !!m.printRepeatLetterhead;
+  let html = '';
+
+  if(compact){
+    // Single letterhead up top unless the user asked to repeat it per structure.
+    const overallLetterhead = !repeatLetterhead ? printLetterhead(state.sections[0]) : '';
+    const sectionsHtml = state.sections.map((sec,i)=>renderPrintSection(sec,i,false,{
+      compact:true, repeatLetterhead, showOverallLetterhead:false
+    })).join('');
+    const summary = renderPrintSummaryPage(true);
+    const closing = `<div class="print-flow-section">${printClosing()}</div>`;
+    html = `<div class="print-flow">${overallLetterhead}${sectionsHtml}${summary}${closing}</div>`;
+  } else {
+    const pages = state.sections.map((sec,i)=>renderPrintSection(sec,i,i===state.sections.length-1 && state.sections.length===1,{compact:false})).join('');
+    const summary = state.sections.length>1 ? renderPrintSummaryPage(false) : '';
+    let closingPage = '';
+    if(state.sections.length>1){
+      const lastSec = state.sections[state.sections.length-1];
+      closingPage = `<div class="print-page">${printLetterhead(lastSec)}${printClosing()}</div>`;
+    }
+    html = pages + summary + closingPage;
   }
-  document.getElementById('printArea').innerHTML = pages + summary + closingPage;
+  document.getElementById('printArea').innerHTML = html;
 }
 
 /* ----------------------- Event delegation ----------------------- */
@@ -3648,7 +3933,7 @@ function excelItemRow(no, groupName, it){
   const c = printRowCells(it);
   const desc = `${it.desc||''}${it.detail?` - ${it.detail}`:''}`;
   return `<tr>${[
-    no, groupName, desc, c.nos, c.unitLength, c.totalLength, c.wpu, it.unit, c.qty, it.rate, excelMoney(itemAmount(it))
+    no, groupName, desc, itemProfileText(it), c.nos, c.unitLength, c.totalLength, c.wpu, it.unit, c.qty, it.rate, excelMoney(itemAmount(it))
   ].map(v=>excelCell(v)).join('')}</tr>`;
 }
 function exportExcel(){
@@ -3675,15 +3960,16 @@ function exportExcel(){
       }
     });
     const calc = sectionCalc(sec);
-    rows += `<tr class="total"><td colspan="10">SUB TOTAL</td><td>${excelMoney(calc.subTotal)}</td></tr>`;
-    rows += `<tr class="sum"><td colspan="10">ADD ${esc(sec.vatPct)}% VAT</td><td>${excelMoney(calc.vatAmt)}</td></tr>`;
-    rows += `<tr class="grand"><td colspan="10">GRAND TOTAL (inclusive of VAT)</td><td>${excelMoney(calc.grandTotal)}</td></tr>`;
+    rows += `<tr class="total"><td colspan="11">SUB TOTAL</td><td>${excelMoney(calc.subTotal)}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="11">ADD ${esc(sec.vatPct)}% VAT</td><td>${excelMoney(calc.vatAmt)}</td></tr>`;
+    rows += `<tr class="grand"><td colspan="11">GRAND TOTAL (inclusive of VAT)</td><td>${excelMoney(calc.grandTotal)}</td></tr>`;
 
     body += `
       <h2>${esc(sec.title || state.meta.project || 'Quote section')}</h2>
       ${sec.roofPitch?`<p>Roof Pitch = ${esc(sec.roofPitch)} degrees</p>`:''}
+      ${sec.note?`<p><b>Note:</b> ${esc(sec.note)}</p>`:''}
       <table>
-        <thead><tr>${['#','Group','Description','Nos','Len','Total M','kg/m','Unit','Qty','Rate','Amount'].map(h=>excelCell(h,'th')).join('')}</tr></thead>
+        <thead><tr>${['#','Group','Description','Profile','Nos','Len','Total M','kg/m','Unit','Qty','Rate','Amount'].map(h=>excelCell(h,'th')).join('')}</tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
 
@@ -3693,13 +3979,13 @@ function exportExcel(){
       sec.optionalGroups.forEach(g=>{
         g.items.forEach(it=>{ on++; optRows += excelItemRow(on, g.name, it); });
       });
-      optRows += `<tr class="sum"><td colspan="10">TOTAL</td><td>${excelMoney(calc.optSubTotal)}</td></tr>`;
-      optRows += `<tr class="sum"><td colspan="10">ADD ${esc(sec.optionalVatPct)}% VAT</td><td>${excelMoney(calc.optVat)}</td></tr>`;
-      optRows += `<tr class="grand"><td colspan="10">GRAND TOTAL</td><td>${excelMoney(calc.optGrand)}</td></tr>`;
+      optRows += `<tr class="sum"><td colspan="11">TOTAL</td><td>${excelMoney(calc.optSubTotal)}</td></tr>`;
+      optRows += `<tr class="sum"><td colspan="11">ADD ${esc(sec.optionalVatPct)}% VAT</td><td>${excelMoney(calc.optVat)}</td></tr>`;
+      optRows += `<tr class="grand"><td colspan="11">GRAND TOTAL</td><td>${excelMoney(calc.optGrand)}</td></tr>`;
       body += `
         <h3>Optional Items</h3>
         <table>
-          <thead><tr>${['#','Group','Description','Nos','Len','Total M','kg/m','Unit','Qty','Rate','Amount'].map(h=>excelCell(h,'th')).join('')}</tr></thead>
+          <thead><tr>${['#','Group','Description','Profile','Nos','Len','Total M','kg/m','Unit','Qty','Rate','Amount'].map(h=>excelCell(h,'th')).join('')}</tr></thead>
           <tbody>${optRows}</tbody>
         </table>`;
     }
@@ -3948,11 +4234,12 @@ function renderCloudPill(){
 }
 function renderCloudPanel(){
   if(!cloud.panelOpen) return `<div id="cloudPanel" class="cloud-panel hidden"></div>`;
+  const closeBtn = `<button type="button" class="btn-icon cp-close" data-action="close-cloud-panel" aria-label="Close" title="Close">\u2715</button>`;
   let inner;
   if(!cloud.client){
     inner = `
       <div class="cp-section">
-        <h3>Connect cloud sync</h3>
+        <div class="cp-row-between"><h3>Connect cloud sync</h3>${closeBtn}</div>
         <p class="cp-hint">Paste your Supabase project URL and anon public key (Project Settings &rarr; API &rarr; Project API keys). Run the setup SQL once first \u2014 see the message in chat.</p>
         <label class="cp-label">Project URL<input type="text" class="f-text" id="sbUrlInput" placeholder="https://xxxxx.supabase.co" value="${esc(localStorage.getItem(SB_URL_KEY)||'')}"></label>
         <label class="cp-label">Anon public key<input type="text" class="f-text" id="sbKeyInput" placeholder="eyJhbGciOiJI..." value="${esc(localStorage.getItem(SB_ANON_KEY)||'')}"></label>
@@ -3971,7 +4258,7 @@ function renderCloudPanel(){
       </div>`).join('') || `<div class="cp-empty">${cloud.loadingList?'Loading\u2026':'No saved quotes yet.'}</div>`;
     inner = `
       <div class="cp-section">
-        <div class="cp-row-between"><h3>Your cloud drafts</h3><button type="button" class="btn-ghost" data-action="disconnect-cloud">Disconnect</button></div>
+        <div class="cp-row-between"><h3>Your cloud drafts</h3><div class="cp-header-actions"><button type="button" class="btn-ghost" data-action="disconnect-cloud">Disconnect</button>${closeBtn}</div></div>
         ${cloud.error?`<div class="cp-error">${esc(cloud.error)}</div>`:''}
         <div class="cp-quote-list">${rows}</div>
         <div class="cp-row-between">
@@ -3990,6 +4277,17 @@ function rerenderCloud(){
   const panel = document.getElementById('cloudPanel');
   if(panel) panel.outerHTML = renderCloudPanel();
 }
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && cloud.panelOpen){ cloud.panelOpen = false; rerenderCloud(); }
+});
+document.addEventListener('click', e=>{
+  if(!cloud.panelOpen) return;
+  const panel = document.getElementById('cloudPanel');
+  const pill = document.getElementById('cloudPill');
+  if(panel && !panel.contains(e.target) && pill && !pill.contains(e.target)){
+    cloud.panelOpen = false; rerenderCloud();
+  }
+}, true);
 
 document.addEventListener('click', e=>{
   const b = e.target.closest('button[data-action]');
@@ -3997,6 +4295,7 @@ document.addEventListener('click', e=>{
   const ds = b.dataset;
   switch(ds.action){
     case 'toggle-cloud-panel': toggleCloudPanel(); break;
+    case 'close-cloud-panel': cloud.panelOpen = false; rerenderCloud(); break;
     case 'connect-cloud': {
       const url = document.getElementById('sbUrlInput').value.trim();
       const key = document.getElementById('sbKeyInput').value.trim();
