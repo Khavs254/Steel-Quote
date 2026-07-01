@@ -240,7 +240,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
   .p-colhead1 th[rowspan="2"]:empty,.p-colhead2 th:empty{background:#DDE5EE;}
   .p-no{text-align:center; width:22px;}
   .p-desc{text-align:left;}
-  .p-profile{text-align:left; font-size:8.3pt; color:#333; white-space:nowrap;}
+  .p-profile{text-align:left; font-size:8.3pt; color:#333; white-space:normal;}
   .p-detail{font-size:7.8pt; color:#555; font-style:italic;}
   .p-num{text-align:right; white-space:nowrap;}
   .p-unit{text-align:center; width:34px;}
@@ -3563,7 +3563,13 @@ function round2(n){ return Math.round(n*100)/100; }
 function nf(n){ return n===''||n==null ? '' : Number(n).toLocaleString('en-KE',{maximumFractionDigits:2}); }
 
 function itemProfileText(it){
-  if(it.unit!=='Kgs' || it.weightMode!=='catalog') return '';
+  if(it.unit!=='Kgs') return '';
+  if(it.weightMode==='plate'){
+    const L = it.plateL||0, W = it.plateW||0, T = it.plateT||0, nos = it.nos||0;
+    if(!L && !W && !T) return 'Plate';
+    return `${nf(L)}x${nf(W)}x${nf(T)}mm plate x ${nf(nos)} Nos`;
+  }
+  if(it.weightMode!=='catalog') return '';
   const cat = CATALOG[it.category];
   if(!cat) return '';
   const x = cat.items[it.sizeIdx||0];
@@ -3626,38 +3632,21 @@ function renderPrintSection(sec, idx, isLast, opts){
   let optionalHtml = '';
   if(sec.optionalEnabled){
     let on = 0;
-    let optRows = '';
-    let hasPlateItems = false;
+    let optBodyRows = '';
     sec.optionalGroups.forEach(g=>{
-      g.items.forEach(it=>{
-        if(it.unit==='Kgs' && it.weightMode==='plate') hasPlateItems = true;
-      });
+      g.items.forEach(it=>{ on++; optBodyRows += printItemRow(on, it); });
     });
-    sec.optionalGroups.forEach(g=>{
-      g.items.forEach(it=>{
-        on++;
-        const isPlate = it.unit==='Kgs' && it.weightMode==='plate';
-        const plateCells = hasPlateItems ? `
-          <td class="p-num">${isPlate?nf(it.plateL):''}</td>
-          <td class="p-num">${isPlate?nf(it.plateW):''}</td>
-          <td class="p-num">${isPlate?nf(it.plateT):''}</td>
-          <td class="p-num">${isPlate?nf(it.nos):''}</td>
-          <td class="p-num">${isPlate?nf(round2(plateKgPerPc(it.plateL,it.plateW,it.plateT))):''}</td>` : '';
-        optRows += `<tr><td class="p-no">${on}</td><td class="p-desc">${esc(it.desc)||'\u2014'}${it.detail?`<div class="p-detail">${esc(it.detail)}</div>`:''}</td>${plateCells}<td class="p-unit">${esc(it.unit)}</td><td class="p-num">${nf(round2(itemQtyDisplay(it)))}</td><td class="p-num">${nf(it.rate)}</td><td class="p-amt">${money(itemAmount(it))}</td></tr>`;
-      });
-    });
-    const plateHeadCells = hasPlateItems ? `<th>L (mm)</th><th>W (mm)</th><th>T (mm)</th><th>Nos</th><th>Unit kg</th>` : '';
-    const footColspan = hasPlateItems ? 10 : 5;
+    optBodyRows += printSumRow('TOTAL', calc.optSubTotal, true);
+    optBodyRows += printSumRow(`ADD ${sec.optionalVatPct}% VAT`, calc.optVat, false);
+    optBodyRows += printSumRow('GRAND TOTAL', calc.optGrand, true);
     optionalHtml = `
       <div class="p-section-title">OPTIONAL ITEMS</div>
-      <table class="p-table p-opt-table">
-        <thead><tr><th></th><th>Description</th>${plateHeadCells}<th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
-        <tbody>${optRows}</tbody>
-        <tfoot>
-          <tr class="p-sumrow"><td colspan="${footColspan}">TOTAL</td><td class="p-amt">${money(calc.optSubTotal)}</td></tr>
-          <tr class="p-sumrow"><td colspan="${footColspan}">ADD ${sec.optionalVatPct}% VAT</td><td class="p-amt">${money(calc.optVat)}</td></tr>
-          <tr class="p-sumrow p-bold"><td colspan="${footColspan}">GRAND TOTAL</td><td class="p-amt">${money(calc.optGrand)}</td></tr>
-        </tfoot>
+      <table class="p-table">
+        <thead>
+          <tr class="p-colhead1"><th rowspan="2">#</th><th rowspan="2">DESCRIPTION</th><th rowspan="2">PROFILE</th><th colspan="3">DIMENSIONS</th><th rowspan="2">kg/m</th><th rowspan="2">UN</th><th rowspan="2">QTY</th><th rowspan="2">RATE</th><th rowspan="2">AMT</th></tr>
+          <tr class="p-colhead2"><th>NOS</th><th>LEN</th><th>TOT M</th></tr>
+        </thead>
+        <tbody>${optBodyRows}</tbody>
       </table>`;
   }
 
