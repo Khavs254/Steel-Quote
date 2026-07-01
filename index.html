@@ -3400,7 +3400,9 @@ function renderGroup(sec, g, isOptional){
   let tailRows = '';
   if(g.isSteel){
     const conn = gt * num(g.connectionsPct)/100;
+    const totalWt = g.items.reduce((s,it)=> s + (it.unit==='Kgs' ? itemWeight(it) : 0), 0);
     tailRows = `
+      <tr class="sum-row"><td colspan="5">Total weight</td><td class="wt-col">${totalWt.toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1})} kg</td><td colspan="3"></td></tr>
       <tr class="sum-row"><td colspan="7">Steel sub-total</td><td class="amt-col">${money(gt)}</td><td></td></tr>
       <tr class="sum-row conn-row">
         <td colspan="4">MS Connections</td>
