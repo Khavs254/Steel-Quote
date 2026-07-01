@@ -3627,21 +3627,36 @@ function renderPrintSection(sec, idx, isLast, opts){
   if(sec.optionalEnabled){
     let on = 0;
     let optRows = '';
+    let hasPlateItems = false;
+    sec.optionalGroups.forEach(g=>{
+      g.items.forEach(it=>{
+        if(it.unit==='Kgs' && it.weightMode==='plate') hasPlateItems = true;
+      });
+    });
     sec.optionalGroups.forEach(g=>{
       g.items.forEach(it=>{
         on++;
-        optRows += `<tr><td class="p-no">${on}</td><td class="p-desc">${esc(it.desc)||'\u2014'}${it.detail?`<div class="p-detail">${esc(it.detail)}</div>`:''}</td><td class="p-unit">${esc(it.unit)}</td><td class="p-num">${nf(round2(itemQtyDisplay(it)))}</td><td class="p-num">${nf(it.rate)}</td><td class="p-amt">${money(itemAmount(it))}</td></tr>`;
+        const isPlate = it.unit==='Kgs' && it.weightMode==='plate';
+        const plateCells = hasPlateItems ? `
+          <td class="p-num">${isPlate?nf(it.plateL):''}</td>
+          <td class="p-num">${isPlate?nf(it.plateW):''}</td>
+          <td class="p-num">${isPlate?nf(it.plateT):''}</td>
+          <td class="p-num">${isPlate?nf(it.nos):''}</td>
+          <td class="p-num">${isPlate?nf(round2(plateKgPerPc(it.plateL,it.plateW,it.plateT))):''}</td>` : '';
+        optRows += `<tr><td class="p-no">${on}</td><td class="p-desc">${esc(it.desc)||'\u2014'}${it.detail?`<div class="p-detail">${esc(it.detail)}</div>`:''}</td>${plateCells}<td class="p-unit">${esc(it.unit)}</td><td class="p-num">${nf(round2(itemQtyDisplay(it)))}</td><td class="p-num">${nf(it.rate)}</td><td class="p-amt">${money(itemAmount(it))}</td></tr>`;
       });
     });
+    const plateHeadCells = hasPlateItems ? `<th>L (mm)</th><th>W (mm)</th><th>T (mm)</th><th>Nos</th><th>Unit kg</th>` : '';
+    const footColspan = hasPlateItems ? 10 : 5;
     optionalHtml = `
       <div class="p-section-title">OPTIONAL ITEMS</div>
       <table class="p-table p-opt-table">
-        <thead><tr><th></th><th>Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+        <thead><tr><th></th><th>Description</th>${plateHeadCells}<th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
         <tbody>${optRows}</tbody>
         <tfoot>
-          <tr class="p-sumrow"><td colspan="5">TOTAL</td><td class="p-amt">${money(calc.optSubTotal)}</td></tr>
-          <tr class="p-sumrow"><td colspan="5">ADD ${sec.optionalVatPct}% VAT</td><td class="p-amt">${money(calc.optVat)}</td></tr>
-          <tr class="p-sumrow p-bold"><td colspan="5">GRAND TOTAL</td><td class="p-amt">${money(calc.optGrand)}</td></tr>
+          <tr class="p-sumrow"><td colspan="${footColspan}">TOTAL</td><td class="p-amt">${money(calc.optSubTotal)}</td></tr>
+          <tr class="p-sumrow"><td colspan="${footColspan}">ADD ${sec.optionalVatPct}% VAT</td><td class="p-amt">${money(calc.optVat)}</td></tr>
+          <tr class="p-sumrow p-bold"><td colspan="${footColspan}">GRAND TOTAL</td><td class="p-amt">${money(calc.optGrand)}</td></tr>
         </tfoot>
       </table>`;
   }
