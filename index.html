@@ -4179,6 +4179,35 @@ async function openCloudQuote(id, opts){
   }
 }
 
+async function duplicateCloudQuote(id){
+  if(!cloud.client) return;
+  try{
+    let source;
+    if(id === state.id){
+      source = state; // use in-memory copy so unsaved edits are included
+    } else {
+      const { data, error } = await cloud.client.from(TABLE).select('data').eq('id', id).single();
+      if(error) throw error;
+      if(!data || !data.data) return;
+      source = data.data;
+    }
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = uuid();
+    if(copy.meta){
+      if(copy.meta.project) copy.meta.project += ' (Copy)';
+      else if(copy.meta.clientName) copy.meta.clientName += ' (Copy)';
+    }
+    const row = { id: copy.id, title: quoteTitle(copy), data: copy, updated_at: new Date().toISOString() };
+    const { error: insErr } = await cloud.client.from(TABLE).upsert(row);
+    if(insErr) throw insErr;
+    cloud.list.unshift({id:row.id, title:row.title, updated_at:row.updated_at});
+    cloud.list.sort((a,b)=> new Date(b.updated_at)-new Date(a.updated_at));
+    await openCloudQuote(copy.id);
+  }catch(e){
+    alert('Could not duplicate: '+((e&&e.message)||e));
+  }
+}
+
 function newCloudQuote(){
   state = defaultState();
   saveState();
@@ -4260,6 +4289,7 @@ function renderCloudPanel(){
           <span class="cp-qtitle">${esc(q.title||'Untitled quote')}</span>
           <span class="cp-qdate">${q.updated_at?new Date(q.updated_at).toLocaleString():''}</span>
         </button>
+        <button type="button" class="btn-icon" data-action="duplicate-cloud-quote" data-id="${q.id}" title="Duplicate">\u29c9</button>
         <button type="button" class="btn-icon btn-danger" data-action="delete-cloud-quote" data-id="${q.id}">\u2715</button>
       </div>`).join('') || `<div class="cp-empty">${cloud.loadingList?'Loading\u2026':'No saved quotes yet.'}</div>`;
     inner = `
@@ -4311,6 +4341,7 @@ document.addEventListener('click', e=>{
     case 'disconnect-cloud': disconnectCloud(); break;
     case 'open-cloud-quote': openCloudQuote(ds.id); break;
     case 'delete-cloud-quote': deleteCloudQuote(ds.id); break;
+    case 'duplicate-cloud-quote': duplicateCloudQuote(ds.id); break;
     case 'new-cloud-quote': newCloudQuote(); break;
     case 'refresh-cloud-list': fetchQuotesList(); break;
     case 'clear-cloud-creds':
