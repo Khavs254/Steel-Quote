@@ -135,6 +135,25 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .items-table th:last-child{border-right:none;}
 .items-table td{padding:6px 6px; border-bottom:1px solid #EFEAE0; vertical-align:top; border-right:1px solid #EFEAE0;}
 .items-table td:last-child{border-right:none;}
+.item-row.hl-row td{background:var(--row-hl); -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+.hl-btn{position:relative;}
+.hl-btn .hl-dot{display:inline-block; width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,.25); vertical-align:middle;}
+.rq-modal-overlay{position:fixed; inset:0; background:rgba(20,30,40,.45); z-index:200; display:flex; align-items:center; justify-content:center;}
+.rq-modal{background:#fff; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.25); padding:16px 18px; min-width:280px; max-width:440px; max-height:80vh; overflow:auto;}
+.rq-modal h4{margin:0 0 4px; font-size:14px;}
+.rq-sub{font-size:12px; color:var(--steel); margin:0 0 10px;}
+.rq-modal-foot{margin-top:12px; text-align:right;}
+.swatch-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+.swatch{height:34px; border-radius:6px; border:1px solid rgba(0,0,0,.15); cursor:pointer; font-size:11px;}
+.swatch.none{background:repeating-linear-gradient(45deg,#fff,#fff 6px,#f0f0f0 6px,#f0f0f0 12px);}
+.swatch.sel{outline:2px solid var(--navy,#14304F); outline-offset:1px;}
+.copy-dest-sec{margin-bottom:10px;}
+.copy-dest-sec-title{font-weight:600; font-size:12px; margin:6px 0 4px;}
+.copy-dest-btn{display:block; width:100%; text-align:left; padding:7px 10px; margin:3px 0; border:1px solid #E3DED2; background:#FAF8F3; border-radius:6px; cursor:pointer; font-size:12.5px;}
+.copy-dest-btn:hover{background:#F0EDE4;}
+.copy-dest-btn.current{opacity:.55; cursor:default;}
+.rq-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:#14304F; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none; transition:all .25s; z-index:300;}
+.rq-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 .items-table .num-col{width:24px; color:var(--steel); font-family:'IBM Plex Mono',monospace; padding-top:10px;}
 .items-table .desc-col{min-width:190px;}
 .items-table .desc-col input{margin-bottom:3px;}
@@ -250,6 +269,7 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
   tr{page-break-inside:avoid; break-inside:avoid-page;}
   .p-sumrow td{background:#F5F2EA; font-weight:600;}
   .p-sumrow.p-bold td{background:#E6ECF2; font-weight:700; color:#14304F; font-size:9.5pt;}
+  tr.p-hl td{background:var(--row-hl) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
 
   .p-pitch{font-size:9.5pt; font-style:italic; margin:4px 0 10px;}
   .p-pitch-note{margin:4px 0 10px;}
@@ -2930,7 +2950,7 @@ function newLineItem(over){
     nos:1, unitLength:0, kgPerM:0,
     useGirthCalc:false, girth:0, thickness:0,
     plateL:0, plateW:0, plateT:0,
-    directKg:0, qty:0, rate:0
+    directKg:0, qty:0, rate:0, color:''
   }, over||{});
 }
 function newGroup(over){
@@ -3165,6 +3185,140 @@ function removeItem(sectionId, groupId, itemId, isOptional){
   g.items = g.items.filter(i=>i.id!==itemId);
   saveState(); rerender();
 }
+/* ----------------------- Row highlight + copy-to modal ----------------------- */
+const ROW_COLORS = [
+  {v:'',        l:'None'},
+  {v:'#FFF3B0', l:'Yellow'},
+  {v:'#D6F5D6', l:'Green'},
+  {v:'#D9ECFB', l:'Blue'},
+  {v:'#FFE0E9', l:'Pink'},
+  {v:'#FFE3C7', l:'Orange'},
+  {v:'#EADFF7', l:'Purple'},
+  {v:'#E8E8E8', l:'Grey'}
+];
+let uiModal = null; /* {type:'color'|'copyTo', section, group, item, optional} */
+
+function modalRoot(){
+  let el = document.getElementById('rqModalRoot');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'rqModalRoot';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function openModal(m){ uiModal = m; modalRoot().innerHTML = renderModal(); }
+function closeModal(){ uiModal = null; const el = document.getElementById('rqModalRoot'); if(el) el.innerHTML = ''; }
+
+function modalSourceItem(){
+  if(!uiModal) return null;
+  const sec = findSection(uiModal.section); if(!sec) return null;
+  const arr = uiModal.optional ? sec.optionalGroups : sec.groups;
+  const g = arr.find(x=>x.id===uiModal.group); if(!g) return null;
+  const it = g.items.find(x=>x.id===uiModal.item); if(!it) return null;
+  return {sec, g, it};
+}
+
+function renderModal(){
+  if(!uiModal) return '';
+  const src = modalSourceItem();
+  if(!src) return '';
+  const {it} = src;
+  let body = '';
+  if(uiModal.type === 'color'){
+    const cells = ROW_COLORS.map(c=>{
+      const sel = (it.color||'') === c.v ? ' sel' : '';
+      const style = c.v ? `background:${c.v};` : '';
+      return `<button type="button" class="swatch${c.v?'':' none'}${sel}" style="${style}" data-action="set-item-color" data-color="${c.v}" title="${c.l}">${c.v?'':'None'}</button>`;
+    }).join('');
+    body = `
+      <h4>Highlight row</h4>
+      <p class="rq-sub">${esc(it.desc)||'(no description)'}</p>
+      <div class="swatch-grid">${cells}</div>`;
+  } else if(uiModal.type === 'copyTo'){
+    const secsHtml = state.sections.map(sec=>{
+      const groupBtns = (list, isOpt)=> list.map(g=>{
+        const isCurrent = sec.id===uiModal.section && g.id===uiModal.group && (!!uiModal.optional)===(!!isOpt);
+        return `<button type="button" class="copy-dest-btn${isCurrent?' current':''}" ${isCurrent?'disabled':''} data-action="copy-item-target" data-tsection="${sec.id}" data-tgroup="${g.id}" data-topt="${isOpt?1:0}">${esc(g.name)||'(unnamed group)'}${isOpt?' <em>(optional block)</em>':''}${isCurrent?' — current group':''}</button>`;
+      }).join('');
+      let inner = groupBtns(sec.groups, false);
+      if(sec.optionalEnabled && (sec.optionalGroups||[]).length){ inner += groupBtns(sec.optionalGroups, true); }
+      if(!inner) inner = '<div class="rq-sub">No groups in this structure yet.</div>';
+      return `<div class="copy-dest-sec"><div class="copy-dest-sec-title">${esc(sec.title)||'(untitled structure)'}</div>${inner}</div>`;
+    }).join('');
+    body = `
+      <h4>Copy row to\u2026</h4>
+      <p class="rq-sub">Copying: <strong>${esc(it.desc)||'(no description)'}</strong>. The original stays where it is.</p>
+      ${secsHtml}`;
+  }
+  return `<div class="rq-modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="rq-modal">
+      ${body}
+      <div class="rq-modal-foot">${btn('Close','close-modal',{},'btn')}</div>
+    </div>
+  </div>`;
+}
+
+function setItemColor(color){
+  const src = modalSourceItem();
+  if(src){
+    src.it.color = color || '';
+    saveState();
+    /* Patch the visible row in place instead of rebuilding the whole app */
+    const tr = document.querySelector(`tr[data-itrow="${cssEscape(src.it.id)}"]`);
+    if(tr){
+      if(src.it.color){
+        tr.classList.add('hl-row');
+        tr.style.setProperty('--row-hl', src.it.color);
+      } else {
+        tr.classList.remove('hl-row');
+        tr.style.removeProperty('--row-hl');
+      }
+      /* refresh the dot on the highlight button */
+      const dot = tr.querySelector('.hl-btn .hl-dot');
+      if(dot){
+        dot.style.background = src.it.color || 'transparent';
+        dot.style.borderColor = src.it.color ? 'rgba(0,0,0,.25)' : '#D8B400';
+      }
+    }
+    /* Print document updated in the background so the click stays snappy */
+    setTimeout(renderPrintArea, 0);
+  }
+  closeModal();
+}
+
+function performCopyItem(tSectionId, tGroupId, tOpt){
+  const src = modalSourceItem();
+  if(!src){ closeModal(); return; }
+  const tSec = findSection(tSectionId); if(!tSec){ closeModal(); return; }
+  const tArr = tOpt ? tSec.optionalGroups : tSec.groups;
+  const tG = tArr.find(g=>g.id===tGroupId); if(!tG){ closeModal(); return; }
+  const copy = JSON.parse(JSON.stringify(src.it));
+  copy.id = uid();
+  tG.items.push(copy);
+  saveState();
+  closeModal();
+  rerender();
+  toast(`Row copied to ${tSec.title||'structure'} \u2192 ${tG.name||'group'}`);
+}
+
+let toastTimer = null;
+function toast(msg){
+  let el = document.getElementById('rqToast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'rqToast';
+    el.className = 'rq-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 2400);
+}
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && uiModal) closeModal(); });
+
 function addPaymentTerm(){
   state.paymentTerms.push({label:'New term', pct:0});
   rebalancePaymentTerms();
@@ -3310,8 +3464,11 @@ function renderItemRow(sec, g, it, idx, isOptional){
   const upBtn = btn('↑','move-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0,dir:-1},'btn-icon');
   const downBtn = btn('↓','move-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0,dir:1},'btn-icon');
   const copyBtn = btn('⧉','duplicate-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon');
+  const dotColor = it.color || '#D8B400';
+  const colorBtn = btn(`<span class="hl-dot" style="background:${it.color||'transparent'}; border-color:${it.color?'rgba(0,0,0,.25)':dotColor};"></span>`,'item-color',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon hl-btn');
+  const copyToBtn = btn('⤷','copy-item-open',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon');
   const deleteBtn = btn('\u2715','remove-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon btn-danger');
-  const actions = `<div class="item-actions">${upBtn.replace('<button ','<button title="Move up" aria-label="Move item up" '+(idx===0?'disabled ':' '))}${downBtn.replace('<button ','<button title="Move down" aria-label="Move item down" '+(idx===g.items.length-1?'disabled ':' '))}${copyBtn.replace('<button ','<button title="Duplicate item" aria-label="Duplicate item" ')}${deleteBtn.replace('<button ','<button title="Remove item" aria-label="Remove item" ')}</div>`;
+  const actions = `<div class="item-actions">${upBtn.replace('<button ','<button title="Move up" aria-label="Move item up" '+(idx===0?'disabled ':' '))}${downBtn.replace('<button ','<button title="Move down" aria-label="Move item down" '+(idx===g.items.length-1?'disabled ':' '))}${copyBtn.replace('<button ','<button title="Duplicate item" aria-label="Duplicate item" ')}${colorBtn.replace('<button ','<button title="Highlight row" aria-label="Highlight row colour" ')}${copyToBtn.replace('<button ','<button title="Copy to another group / structure" aria-label="Copy item to another group or structure" ')}${deleteBtn.replace('<button ','<button title="Remove item" aria-label="Remove item" ')}</div>`;
   let weightCells = '';
   if(isKg){
     if(it.weightMode==='catalog'){
@@ -3377,7 +3534,8 @@ function renderItemRow(sec, g, it, idx, isOptional){
 
   const weightModeSel = isKg ? selectInput('item',sec.id,g.id,it.id,'weightMode',it.weightMode,WEIGHT_MODES,isOptional) : `<span class="dim">\u2014</span>`;
 
-  return `<tr class="item-row">
+  const hlAttr = it.color ? ` hl-row" style="--row-hl:${esc(it.color)}` : '';
+  return `<tr class="item-row${hlAttr}" data-itrow="${it.id}">
     <td class="num-col">${idx+1}</td>
     <td class="desc-col">
       ${textInput('item',sec.id,g.id,it.id,'desc',it.desc,isOptional,{ph:'Description e.g. Columns'})}
@@ -3588,7 +3746,8 @@ function itemProfileText(it){
 
 function printItemRow(no, it){
   const c = printRowCells(it);
-  return `<tr>
+  const hl = it.color ? ` class="p-hl" style="--row-hl:${esc(it.color)}"` : '';
+  return `<tr${hl}>
     <td class="p-no">${no}</td>
     <td class="p-desc">${esc(it.desc)||'\u2014'}${it.detail?`<div class="p-detail">${esc(it.detail)}</div>`:''}</td>
     <td class="p-profile">${esc(itemProfileText(it))||'\u2014'}</td>
@@ -3873,6 +4032,11 @@ document.addEventListener('click', e=>{
     case 'remove-group': removeGroup(ds.section, ds.group, isOpt); break;
     case 'add-item': addItem(ds.section, ds.group, isOpt); break;
     case 'duplicate-item': duplicateItem(ds.section, ds.group, ds.item, isOpt); break;
+    case 'item-color': openModal({type:'color', section:ds.section, group:ds.group, item:ds.item, optional:isOpt}); break;
+    case 'set-item-color': setItemColor(ds.color||''); break;
+    case 'copy-item-open': openModal({type:'copyTo', section:ds.section, group:ds.group, item:ds.item, optional:isOpt}); break;
+    case 'copy-item-target': performCopyItem(ds.tsection, ds.tgroup, ds.topt==='1'); break;
+    case 'close-modal': closeModal(); break;
     case 'move-item': moveItem(ds.section, ds.group, ds.item, isOpt, parseInt(ds.dir,10)||0); break;
     case 'remove-item': removeItem(ds.section, ds.group, ds.item, isOpt); break;
     case 'add-payment-term': addPaymentTerm(); break;
