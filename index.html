@@ -154,6 +154,30 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .copy-dest-btn.current{opacity:.55; cursor:default;}
 .rq-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:#14304F; color:#fff; padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none; transition:all .25s; z-index:300;}
 .rq-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.pb-btn.pb-on{background:#14304F; color:#fff; border-color:#14304F;}
+.item-row.pb-row td{border-top:2px dashed #B08F2E;}
+.print-opts-grid{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:10px;}
+.print-opts-grid label{display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600;}
+.print-opts-grid .f-text, .print-opts-grid .f-num{min-width:110px;}
+.print-opts-hint{font-size:11.5px; color:var(--steel); margin-top:8px;}
+/* ---------- Print preview mode ---------- */
+.pv-break{display:none;}
+#previewBar{display:none;}
+body.preview-mode .topbar, body.preview-mode .shell{display:none !important;}
+body.preview-mode{background:#565E66;}
+body.preview-mode #previewBar{display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:150; background:#14304F; color:#fff; padding:10px 16px; box-shadow:0 2px 8px rgba(0,0,0,.35);}
+body.preview-mode #previewBar .pv-hint{font-size:12px; opacity:.85;}
+body.preview-mode #previewBar .spacer{flex:1;}
+body.preview-mode #printArea{display:block !important; background:#fff; margin:22px auto; padding:14mm 12mm; box-shadow:0 4px 22px rgba(0,0,0,.4); font-family:Arial,Helvetica,sans-serif; color:#111; font-size:11.5pt;}
+body.preview-mode .pv-break{display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; margin-right:4px; padding:0; font-size:11px; line-height:1; border:1px solid #C9BE9E; background:#FBF9F2; color:#8A7B4D; border-radius:4px; cursor:pointer; vertical-align:middle;}
+body.preview-mode .pv-break:hover{background:#14304F; color:#fff; border-color:#14304F;}
+body.preview-mode .pv-break.on{background:#B08F2E; color:#fff; border-color:#B08F2E;}
+body.preview-mode tr.p-pagebreak td{border-top:3px dashed #B08F2E;}
+body.preview-mode div.p-pagebreak{border-top:3px dashed #B08F2E; padding-top:6px;}
+body.preview-mode #printArea{position:relative;}
+#pvPageOverlay{position:absolute; inset:0; pointer-events:none; z-index:5;}
+.pv-pageline{position:absolute; left:0; right:0; border-top:2px dashed #E05656;}
+.pv-pagelabel{position:absolute; right:6px; top:-9px; background:#E05656; color:#fff; font-size:9.5px; font-weight:700; padding:1px 8px; border-radius:8px; letter-spacing:.3px; font-family:Arial,sans-serif;}
 .items-table .num-col{width:24px; color:var(--steel); font-family:'IBM Plex Mono',monospace; padding-top:10px;}
 .items-table .desc-col{min-width:190px;}
 .items-table .desc-col input{margin-bottom:3px;}
@@ -270,6 +294,10 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
   .p-sumrow td{background:#F5F2EA; font-weight:600;}
   .p-sumrow.p-bold td{background:#E6ECF2; font-weight:700; color:#14304F; font-size:9.5pt;}
   tr.p-hl td{background:var(--row-hl) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .p-pagebreak{break-before:page; page-break-before:always;}
+  .pv-break, #previewBar, #pvPageOverlay{display:none !important;}
+  body.preview-mode{background:#fff !important;}
+  body.preview-mode #printArea{width:auto !important; margin:0 !important; padding:0 !important; box-shadow:none !important;}
 
   .p-pitch{font-size:9.5pt; font-style:italic; margin:4px 0 10px;}
   .p-pitch-note{margin:4px 0 10px;}
@@ -488,6 +516,9 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
     <button class="tb-btn" type="button" data-action="save-draft">Save draft</button>
     <button class="tb-btn" type="button" data-action="open-draft">Open draft</button>
     <button class="tb-btn" type="button" data-action="export-excel">Export Excel</button>
+    <button class="tb-btn" type="button" id="btnUndo" data-action="undo" title="Undo (Ctrl+Z)" disabled>&#8630;</button>
+    <button class="tb-btn" type="button" id="btnRedo" data-action="redo" title="Redo (Ctrl+Y)" disabled>&#8631;</button>
+    <button class="tb-btn" type="button" data-action="toggle-preview">Preview</button>
     <button class="tb-btn primary" type="button" data-action="print-quote">Print / Save PDF</button>
   </div>
   <input type="file" id="importFile" accept="application/json">
@@ -2950,7 +2981,7 @@ function newLineItem(over){
     nos:1, unitLength:0, kgPerM:0,
     useGirthCalc:false, girth:0, thickness:0,
     plateL:0, plateW:0, plateT:0,
-    directKg:0, qty:0, rate:0, color:''
+    directKg:0, qty:0, rate:0, color:'', pageBreak:false
   }, over||{});
 }
 function newGroup(over){
@@ -3001,15 +3032,77 @@ function loadState(){
   }catch(e){ return defaultState(); }
 }
 function saveState(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+  const json = JSON.stringify(state);
+  histRecord(json);
+  try{ localStorage.setItem(STORE_KEY, json); }catch(e){}
   if(cloud.client){
-    try{ localStorage.setItem(localCacheKey(state.id), JSON.stringify(state)); }catch(e){}
+    try{ localStorage.setItem(localCacheKey(state.id), json); }catch(e){}
     queueCloudSave();
   }
 }
 
 let state = loadState();
 if(state.paymentTerms && state.paymentTerms.length) rebalancePaymentTerms();
+
+/* ----------------------- Undo / redo history ----------------------- */
+let histUndo = [], histRedo = [];
+let histSnapshot = JSON.stringify(state);
+let histSnapshotId = state.id;
+let histSuppress = false;
+let histLastPush = 0;
+
+function histRecord(nowJson){
+  if(histSuppress) return;
+  const now = nowJson || JSON.stringify(state);
+  if(now === histSnapshot) return;
+  if(state.id !== histSnapshotId){
+    /* switched to a different quote — history from the old one no longer applies */
+    histUndo = []; histRedo = [];
+    histSnapshot = now; histSnapshotId = state.id;
+    updateHistButtons();
+    return;
+  }
+  const t = Date.now();
+  if(t - histLastPush > 700){
+    histUndo.push(histSnapshot);
+    if(histUndo.length > 60) histUndo.shift();
+    histLastPush = t;
+  }
+  /* rapid keystrokes within 700ms merge into one undo step */
+  histRedo = [];
+  histSnapshot = now;
+  updateHistButtons();
+}
+
+function applySnapshot(snap){
+  histSuppress = true;
+  try{
+    state = JSON.parse(snap);
+    histSnapshot = snap;
+    histSnapshotId = state.id;
+    saveState();
+  } finally {
+    histSuppress = false;
+  }
+  rerender();
+  updateHistButtons();
+}
+
+function undoChange(){
+  if(!histUndo.length) return;
+  histRedo.push(JSON.stringify(state));
+  applySnapshot(histUndo.pop());
+}
+function redoChange(){
+  if(!histRedo.length) return;
+  histUndo.push(JSON.stringify(state));
+  applySnapshot(histRedo.pop());
+}
+function updateHistButtons(){
+  const u = document.getElementById('btnUndo'), r = document.getElementById('btnRedo');
+  if(u) u.disabled = !histUndo.length;
+  if(r) r.disabled = !histRedo.length;
+}
 
 /* ----------------------- Calculations ----------------------- */
 function plateKgPerPc(L,W,T){ return (num(L)/1000)*(num(W)/1000)*(num(T)/1000)*DENSITY; }
@@ -3124,6 +3217,172 @@ function removeSection(id){
   state.sections = state.sections.filter(s=>s.id!==id);
   if(state.sections.length===0) state.sections.push(newSection());
   saveState(); rerender();
+}
+function moveSection(id, dir){
+  const i = state.sections.findIndex(s=>s.id===id);
+  const j = i + dir;
+  if(i<0 || j<0 || j>=state.sections.length) return;
+  const [sec] = state.sections.splice(i,1);
+  state.sections.splice(j,0,sec);
+  saveState(); rerender();
+}
+function toggleItemBreak(sectionId, groupId, itemId, isOptional){
+  const sec = findSection(sectionId); if(!sec) return;
+  const arr = isOptional ? sec.optionalGroups : sec.groups;
+  const g = arr.find(x=>x.id===groupId); if(!g) return;
+  const it = g.items.find(x=>x.id===itemId); if(!it) return;
+  it.pageBreak = !it.pageBreak;
+  saveState();
+  /* Patch in place — no full rebuild needed */
+  const tr = document.querySelector(`tr[data-itrow="${cssEscape(it.id)}"]`);
+  if(tr){
+    tr.classList.toggle('pb-row', !!it.pageBreak);
+    const b = tr.querySelector('.pb-btn');
+    if(b) b.classList.toggle('pb-on', !!it.pageBreak);
+  }
+  setTimeout(renderPrintArea, 0);
+}
+
+/* ----------------------- Print preview mode ----------------------- */
+let previewMode = false;
+
+function findItemById(itemId){
+  for(const sec of state.sections){
+    for(const g of sec.groups){
+      const it = g.items.find(x=>x.id===itemId);
+      if(it) return it;
+    }
+    for(const g of (sec.optionalGroups||[])){
+      const it = g.items.find(x=>x.id===itemId);
+      if(it) return it;
+    }
+  }
+  return null;
+}
+
+function togglePreview(){
+  previewMode = !previewMode;
+  document.body.classList.toggle('preview-mode', previewMode);
+  let bar = document.getElementById('previewBar');
+  if(previewMode){
+    if(!bar){
+      bar = document.createElement('div');
+      bar.id = 'previewBar';
+      document.body.appendChild(bar);
+    }
+    bar.innerHTML = `
+      <button type="button" class="tb-btn" data-action="toggle-preview">\u2190 Back to editor</button>
+      <span class="pv-hint">Red dashed lines show where each printed page ends. Click the \u2933 handle on any row to push it to the next page (gold line = your forced break).</span>
+      <span class="spacer"></span>
+      <button type="button" class="tb-btn primary" data-action="print-quote">Print / Save PDF</button>`;
+    renderPrintArea();
+    window.scrollTo(0,0);
+  } else {
+    if(bar) bar.innerHTML = '';
+    rerender(); /* sync editor rows with any breaks toggled in preview */
+  }
+}
+
+function previewToggleBreak(itemId){
+  const it = findItemById(itemId);
+  if(!it) return;
+  it.pageBreak = !it.pageBreak;
+  saveState();
+  renderPrintArea();
+}
+
+function previewToggleBlockBreak(key){
+  if(!key) return;
+  const bb = blockBreaks();
+  bb[key] = !bb[key];
+  if(!bb[key]) delete bb[key];
+  saveState();
+  renderPrintArea();
+}
+
+/* Simulate the printer's pagination and draw a line where each page ends.
+   Walks the unbreakable blocks (rows, letterheads, closing blocks) in order,
+   accumulating height against the usable page height for the chosen paper,
+   orientation and scale; forced row breaks start a fresh page. */
+function renderPreviewPageLines(){
+  const area = document.getElementById('printArea');
+  if(!area) return;
+  const old = document.getElementById('pvPageOverlay');
+  if(old) old.remove();
+  if(!previewMode) return;
+
+  const m = state.meta;
+  const MM = 96/25.4; /* CSS px per mm */
+  const PAPER_W = {A4:210, A3:297, A5:148, Letter:215.9, Legal:215.9};
+  const PAPER_H = {A4:297, A3:420, A5:210, Letter:279.4, Legal:355.6};
+  const paper = m.printPaper || 'A4';
+  const landscape = m.printOrient === 'landscape';
+  const paperH = landscape ? (PAPER_W[paper]||210) : (PAPER_H[paper]||297);
+  let scale = num(m.printScale) || 100;
+  scale = Math.min(150, Math.max(50, scale)) / 100;
+  /* usable printed height per page (paper minus 14mm top + 14mm bottom margins),
+     converted to the preview's pre-zoom coordinate space */
+  const pageH = ((paperH - 28) * MM) / scale;
+
+  const aRect = area.getBoundingClientRect();
+  const zoomFix = scale; /* rects are post-zoom; divide to get layout coords */
+
+  const atoms = Array.from(area.querySelectorAll('tr, .p-letterhead, .p-footerband, .p-pitch-note, .p-closing, .p-sign, .p-pagebreak, .p-section-title'))
+    .map(el=>{
+      const r = el.getBoundingClientRect();
+      return {
+        el,
+        top:(r.top - aRect.top)/zoomFix,
+        bottom:(r.bottom - aRect.top)/zoomFix,
+        forced: el.classList && el.classList.contains('p-pagebreak'),
+        pageEl: el.classList && el.classList.contains('print-page')
+      };
+    })
+    .filter(a=>a.bottom - a.top > 0.5)
+    .sort((a,b)=>a.top - b.top);
+
+  /* .print-page containers (one-structure-per-page mode) force a new page too */
+  Array.from(area.querySelectorAll('.print-page')).slice(1).forEach(el=>{
+    const r = el.getBoundingClientRect();
+    atoms.push({el, top:(r.top-aRect.top)/zoomFix, bottom:(r.top-aRect.top)/zoomFix+1, forced:true});
+  });
+  atoms.sort((a,b)=>a.top-b.top);
+
+  const breaks = [];
+  let pageStart = parseFloat(getComputedStyle(area).paddingTop) || 0;
+  for(const a of atoms){
+    if(a.forced && a.top > pageStart + 1){
+      breaks.push(a.top);
+      pageStart = a.top;
+    }
+    const h = a.bottom - a.top;
+    if(a.bottom > pageStart + pageH){
+      /* block doesn't fit on this page */
+      let breakY;
+      if(a.top > pageStart + 1 && h <= pageH){
+        breakY = a.top;            /* unbreakable block slides whole to next page */
+      } else {
+        breakY = pageStart + pageH; /* block itself splits (taller than a page) */
+      }
+      breaks.push(breakY);
+      pageStart = breakY;
+      while(a.bottom > pageStart + pageH){ /* very tall block spanning pages */
+        pageStart += pageH;
+        breaks.push(pageStart);
+      }
+    }
+  }
+
+  const ov = document.createElement('div');
+  ov.id = 'pvPageOverlay';
+  breaks.forEach((y,i)=>{
+    const line = document.createElement('div');
+    line.className = 'pv-pageline';
+    line.style.top = y + 'px';
+    line.innerHTML = `<span class="pv-pagelabel">end of page ${i+1} \u2014 page ${i+2} starts</span>`;
+    ov.appendChild(line);
+  });
+  area.appendChild(ov);
 }
 function duplicateSection(id){
   const sec = findSection(id); if(!sec) return;
@@ -3317,7 +3576,18 @@ function toast(msg){
   toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 2400);
 }
 
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && uiModal) closeModal(); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    if(uiModal) closeModal();
+    else if(typeof previewMode!=='undefined' && previewMode) togglePreview();
+    return;
+  }
+  if((e.ctrlKey || e.metaKey) && !e.altKey){
+    const k = e.key.toLowerCase();
+    if(k==='z'){ e.preventDefault(); if(e.shiftKey) redoChange(); else undoChange(); }
+    else if(k==='y'){ e.preventDefault(); redoChange(); }
+  }
+});
 
 function addPaymentTerm(){
   state.paymentTerms.push({label:'New term', pct:0});
@@ -3452,8 +3722,31 @@ function renderMeta(){
   <section class="card print-settings-card">
     <div class="card-head"><h2>Printing options</h2></div>
     <div class="print-opts">
+      <div class="print-opts-grid">
+        <label>Paper size
+          <select class="f-text" data-scope="meta" data-field="printPaper" data-path="meta||||printPaper|0">
+            ${['A4','A3','A5','Letter','Legal'].map(p=>`<option value="${p}" ${(m.printPaper||'A4')===p?'selected':''}>${p}</option>`).join('')}
+          </select>
+        </label>
+        <label>Orientation
+          <select class="f-text" data-scope="meta" data-field="printOrient" data-path="meta||||printOrient|0">
+            <option value="portrait" ${(m.printOrient||'portrait')!=='landscape'?'selected':''}>Portrait</option>
+            <option value="landscape" ${(m.printOrient||'portrait')==='landscape'?'selected':''}>Landscape</option>
+          </select>
+        </label>
+        <label>Print scale %
+          <input type="text" inputmode="decimal" class="f-num" data-scope="meta" data-field="printScale" data-path="meta||||printScale|0" value="${m.printScale||100}" title="50 – 150. 100 = normal size; smaller fits more per page.">
+        </label>
+        <label>Combined summary
+          <select class="f-text" data-scope="meta" data-field="summaryPosition" data-path="meta||||summaryPosition|0">
+            <option value="end" ${(m.summaryPosition||'end')!=='start'?'selected':''}>After structures (end)</option>
+            <option value="start" ${m.summaryPosition==='start'?'selected':''}>Before structures (page 1)</option>
+          </select>
+        </label>
+      </div>
       <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printCompact" data-path="meta||||printCompact|0" ${m.printCompact!==false?'checked':''}> Compact print layout \u2014 pack structures together to fill each page, instead of one page per structure</label>
       <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printRepeatLetterhead" data-path="meta||||printRepeatLetterhead|0" ${m.printRepeatLetterhead?'checked':''} ${m.printCompact===false?'disabled':''}> Repeat full letterhead for every structure (otherwise shown once at the top)</label>
+      <div class="print-opts-hint">Tip: the \u2933 button on any row starts that row on a new page when printing. Use the \u2191\u2193 buttons on each sheet header to change the order sheets print in.</div>
     </div>
   </section>`;
 }
@@ -3467,8 +3760,9 @@ function renderItemRow(sec, g, it, idx, isOptional){
   const dotColor = it.color || '#D8B400';
   const colorBtn = btn(`<span class="hl-dot" style="background:${it.color||'transparent'}; border-color:${it.color?'rgba(0,0,0,.25)':dotColor};"></span>`,'item-color',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon hl-btn');
   const copyToBtn = btn('⤷','copy-item-open',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon');
+  const breakBtn = btn('⤓','toggle-item-break',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon pb-btn'+(it.pageBreak?' pb-on':''));
   const deleteBtn = btn('\u2715','remove-item',{section:sec.id,group:g.id,item:it.id,optional:isOptional?1:0},'btn-icon btn-danger');
-  const actions = `<div class="item-actions">${upBtn.replace('<button ','<button title="Move up" aria-label="Move item up" '+(idx===0?'disabled ':' '))}${downBtn.replace('<button ','<button title="Move down" aria-label="Move item down" '+(idx===g.items.length-1?'disabled ':' '))}${copyBtn.replace('<button ','<button title="Duplicate item" aria-label="Duplicate item" ')}${colorBtn.replace('<button ','<button title="Highlight row" aria-label="Highlight row colour" ')}${copyToBtn.replace('<button ','<button title="Copy to another group / structure" aria-label="Copy item to another group or structure" ')}${deleteBtn.replace('<button ','<button title="Remove item" aria-label="Remove item" ')}</div>`;
+  const actions = `<div class="item-actions">${upBtn.replace('<button ','<button title="Move up" aria-label="Move item up" '+(idx===0?'disabled ':' '))}${downBtn.replace('<button ','<button title="Move down" aria-label="Move item down" '+(idx===g.items.length-1?'disabled ':' '))}${copyBtn.replace('<button ','<button title="Duplicate item" aria-label="Duplicate item" ')}${colorBtn.replace('<button ','<button title="Highlight row" aria-label="Highlight row colour" ')}${copyToBtn.replace('<button ','<button title="Copy to another group / structure" aria-label="Copy item to another group or structure" ')}${breakBtn.replace('<button ','<button title="Start this row on a new page when printing" aria-label="Toggle page break before this row" ')}${deleteBtn.replace('<button ','<button title="Remove item" aria-label="Remove item" ')}</div>`;
   let weightCells = '';
   if(isKg){
     if(it.weightMode==='catalog'){
@@ -3535,7 +3829,7 @@ function renderItemRow(sec, g, it, idx, isOptional){
   const weightModeSel = isKg ? selectInput('item',sec.id,g.id,it.id,'weightMode',it.weightMode,WEIGHT_MODES,isOptional) : `<span class="dim">\u2014</span>`;
 
   const hlAttr = it.color ? ` hl-row" style="--row-hl:${esc(it.color)}` : '';
-  return `<tr class="item-row${hlAttr}" data-itrow="${it.id}">
+  return `<tr class="item-row${it.pageBreak?' pb-row':''}${hlAttr}" data-itrow="${it.id}">
     <td class="num-col">${idx+1}</td>
     <td class="desc-col">
       ${textInput('item',sec.id,g.id,it.id,'desc',it.desc,isOptional,{ph:'Description e.g. Columns'})}
@@ -3606,6 +3900,8 @@ function renderSection(sec, secIdx){
       <input type="text" class="f-text section-title" data-scope="section" data-section="${sec.id}" data-field="title" data-path="${path('section',sec.id,'','','title',0)}" value="${esc(sec.title)}">
       <input type="text" class="f-text section-pitch" placeholder="Roof pitch e.g. 18\u00b0" data-scope="section" data-section="${sec.id}" data-field="roofPitch" data-path="${path('section',sec.id,'','','roofPitch',0)}" value="${esc(sec.roofPitch)}">
       <span class="spacer"></span>
+      ${btn('↑','move-section',{section:sec.id,dir:-1},'btn-icon').replace('<button ','<button title="Move sheet up" aria-label="Move sheet up" '+(secIdx===0?'disabled ':' '))}
+      ${btn('↓','move-section',{section:sec.id,dir:1},'btn-icon').replace('<button ','<button title="Move sheet down" aria-label="Move sheet down" '+(secIdx===state.sections.length-1?'disabled ':' '))}
       ${btn('Duplicate','duplicate-section',{section:sec.id},'btn-ghost')}
       ${btn('Remove section','remove-section',{section:sec.id},'btn-ghost btn-danger-text')}
     </div>
@@ -3746,9 +4042,12 @@ function itemProfileText(it){
 
 function printItemRow(no, it){
   const c = printRowCells(it);
-  const hl = it.color ? ` class="p-hl" style="--row-hl:${esc(it.color)}"` : '';
+  const cls = [];
+  if(it.color) cls.push('p-hl');
+  if(it.pageBreak) cls.push('p-pagebreak');
+  const hl = (cls.length?` class="${cls.join(' ')}"`:'') + (it.color?` style="--row-hl:${esc(it.color)}"`:'');
   return `<tr${hl}>
-    <td class="p-no">${no}</td>
+    <td class="p-no"><button type="button" class="pv-break${it.pageBreak?' on':''}" data-action="preview-toggle-break" data-pbitem="${it.id}" title="${it.pageBreak?'Remove page break':'Start this row on a new page'}">\u2933</button>${no}</td>
     <td class="p-desc">${esc(it.desc)||'\u2014'}${it.detail?`<div class="p-detail">${esc(it.detail)}</div>`:''}</td>
     <td class="p-profile">${esc(itemProfileText(it))||'\u2014'}</td>
     <td class="p-num">${nf(c.nos)}</td>
@@ -3764,8 +4063,18 @@ function printItemRow(no, it){
 function printGroupHeaderRow(name){
   return `<tr class="p-grouphead"><td colspan="11">${esc(name)}</td></tr>`;
 }
-function printSumRow(label, amount, bold){
-  return `<tr class="p-sumrow ${bold?'p-bold':''}"><td colspan="10">${esc(label)}</td><td class="p-amt">${money(amount)}</td></tr>`;
+function blockBreaks(){
+  if(!state.meta.printBlockBreaks) state.meta.printBlockBreaks = {};
+  return state.meta.printBlockBreaks;
+}
+function pvBlockHandle(key){
+  const on = !!blockBreaks()[key];
+  return `<button type="button" class="pv-break pv-blk${on?' on':''}" data-action="preview-toggle-block-break" data-brkey="${esc(key)}" title="${on?'Remove page break \u2014 let this block flow up':'Move this block to a new page'}">\u2933</button>`;
+}
+function printSumRow(label, amount, bold, brKey){
+  const br = brKey && blockBreaks()[brKey];
+  const handle = brKey ? pvBlockHandle(brKey) : '';
+  return `<tr class="p-sumrow ${bold?'p-bold':''}${br?' p-pagebreak':''}"><td colspan="10">${handle}${esc(label)}</td><td class="p-amt">${money(amount)}</td></tr>`;
 }
 
 function renderPrintSection(sec, idx, isLast, opts){
@@ -3784,7 +4093,7 @@ function renderPrintSection(sec, idx, isLast, opts){
     }
   });
   const calc = sectionCalc(sec);
-  bodyRows += printSumRow('SUB TOTAL', calc.subTotal, true);
+  bodyRows += printSumRow('SUB TOTAL', calc.subTotal, true, 'sum:'+sec.id);
   bodyRows += printSumRow(`ADD ${sec.vatPct}% VAT`, calc.vatAmt, false);
   bodyRows += printSumRow('GRAND TOTAL (inclusive of VAT)', calc.grandTotal, true);
 
@@ -3843,8 +4152,13 @@ function renderPrintSection(sec, idx, isLast, opts){
   return `<div class="print-flow-section">${innerHtml}</div>`;
 }
 
-function printLetterhead(sec){
+function printLetterhead(sec, overall){
   const dateStr = fmtDateLong(state.meta.quoteDate);
+  /* Per-structure letterheads show the structure title; the document-level
+     letterhead shows the project name (the quote may span many structures). */
+  const projLine = overall
+    ? (state.meta.project || (state.sections.length>1 ? 'Structural Steel Works' : (sec && sec.title) || ''))
+    : ((sec && sec.title) || state.meta.project);
   return `
   <div class="p-letterhead">
     <img class="p-logo" src="${LOGO_B64}" alt="Ropa Engineering logo">
@@ -3860,16 +4174,17 @@ function printLetterhead(sec){
   </div>
   <div class="p-client-block">
     <div class="p-client-name">${esc(state.meta.clientName)||'&nbsp;'}</div>
-    <div class="p-project">${esc(sec.title || state.meta.project)}</div>
+    <div class="p-project">${esc(projLine)}</div>
     ${state.meta.location?`<div class="p-location">${esc(state.meta.location)}</div>`:''}
   </div>`;
 }
 
 function printClosing(){
   const rows = state.paymentTerms.map((pt,i)=>`<div class="p-pterm">${i+1}.0 ${esc(pt.label)} <b>${pt.pct}%</b></div>`).join('');
+  const br = blockBreaks()['closing'];
   return `
-  <div class="p-closing">
-    <div class="p-pterms-title">Payment Terms</div>
+  <div class="p-closing${br?' p-pagebreak':''}">
+    <div class="p-pterms-title">${pvBlockHandle('closing')}Payment Terms</div>
     <div class="p-pterms">${rows}</div>
     <div class="p-regards">
       <div>Regards,</div>
@@ -3886,46 +4201,75 @@ function printClosing(){
 function renderPrintSummaryPage(compact){
   if(state.sections.length<2) return '';
   const rows = state.sections.map(sec=>`<tr><td class="p-desc">${esc(sec.title)}</td><td class="p-amt">${money(sectionCalc(sec).grandTotal)}</td></tr>`).join('');
+  const br = blockBreaks()['summary'];
   const inner = `
-    <div class="p-section-title">COMBINED QUOTE SUMMARY</div>
+    <div class="p-section-title">${pvBlockHandle('summary')}COMBINED QUOTE SUMMARY</div>
     <table class="p-table p-opt-table">
       <thead><tr><th>Structure / Section</th><th>Grand Total (KSH)</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="p-sumrow p-bold"><td>TOTAL QUOTE VALUE</td><td class="p-amt">${money(documentGrandTotal())}</td></tr></tfoot>
     </table>`;
-  return compact ? `<div class="print-flow-section">${inner}</div>` : `<div class="print-page">${inner}</div>`;
+  return compact ? `<div class="print-flow-section${br?' p-pagebreak':''}">${inner}</div>` : `<div class="print-page">${inner}</div>`;
 }
 
 function renderPrintArea(){
   const m = state.meta;
+  /* Dynamic page setup: paper size, orientation and scale from print options.
+     This <style> comes after the static stylesheet, so its @page rule wins. */
+  let ps = document.getElementById('printDynamicStyle');
+  if(!ps){
+    ps = document.createElement('style');
+    ps.id = 'printDynamicStyle';
+    document.head.appendChild(ps);
+  }
+  const paper = m.printPaper || 'A4';
+  const orient = m.printOrient === 'landscape' ? ' landscape' : '';
+  let scale = num(m.printScale) || 100;
+  scale = Math.min(150, Math.max(50, scale));
+  const PAPER_W = {A4:210, A3:297, A5:148, Letter:215.9, Legal:215.9};
+  const PAPER_H = {A4:297, A3:420, A5:210, Letter:279.4, Legal:355.6};
+  const pw = orient ? (PAPER_H[paper]||297) : (PAPER_W[paper]||210);
+  ps.textContent = `@page{ size:${paper}${orient}; margin:14mm 12mm; }`
+    + (scale !== 100 ? ` @media print{ #printArea{ zoom:${scale/100}; } }` : '')
+    + ` body.preview-mode #printArea{ width:${pw}mm; zoom:${scale/100}; }`;
   const compact = m.printCompact !== false;
   const repeatLetterhead = !!m.printRepeatLetterhead;
   let html = '';
 
   if(compact){
     // Single letterhead up top unless the user asked to repeat it per structure.
-    const overallLetterhead = !repeatLetterhead ? printLetterhead(state.sections[0]) : '';
+    const overallLetterhead = !repeatLetterhead ? printLetterhead(state.sections[0], true) : '';
     const sectionsHtml = state.sections.map((sec,i)=>renderPrintSection(sec,i,false,{
       compact:true, repeatLetterhead, showOverallLetterhead:false
     })).join('');
     const summary = renderPrintSummaryPage(true);
     const closing = `<div class="print-flow-section">${printClosing()}</div>`;
-    html = `<div class="print-flow">${overallLetterhead}${sectionsHtml}${summary}${closing}</div>`;
+    const summaryFirst = m.summaryPosition === 'start';
+    html = summaryFirst
+      ? `<div class="print-flow">${overallLetterhead}${summary}${sectionsHtml}${closing}</div>`
+      : `<div class="print-flow">${overallLetterhead}${sectionsHtml}${summary}${closing}</div>`;
   } else {
     const pages = state.sections.map((sec,i)=>renderPrintSection(sec,i,i===state.sections.length-1 && state.sections.length===1,{compact:false})).join('');
     const summary = state.sections.length>1 ? renderPrintSummaryPage(false) : '';
     let closingPage = '';
     if(state.sections.length>1){
       const lastSec = state.sections[state.sections.length-1];
-      closingPage = `<div class="print-page">${printLetterhead(lastSec)}${printClosing()}</div>`;
+      closingPage = `<div class="print-page">${printLetterhead(lastSec, true)}${printClosing()}</div>`;
     }
-    html = pages + summary + closingPage;
+    html = (m.summaryPosition === 'start') ? (summary + pages + closingPage) : (pages + summary + closingPage);
   }
   document.getElementById('printArea').innerHTML = html;
+  if(typeof previewMode !== 'undefined' && previewMode){
+    requestAnimationFrame(renderPreviewPageLines);
+  }
 }
 
 /* ----------------------- Event delegation ----------------------- */
 function rerender(){
+  if(typeof typingRerenderTimer !== 'undefined' && typingRerenderTimer){
+    clearTimeout(typingRerenderTimer);
+    typingRerenderTimer = null;
+  }
   const active = document.activeElement;
   let restore = null;
   if(active && active.dataset && active.dataset.path){
@@ -3978,11 +4322,22 @@ function isUnfinishedNumericInput(target){
     requestAnimationFrame(()=>{ try{ t.select(); }catch(err){} });
   }
 }); */
+var typingRerenderTimer = null;
+function scheduleTypingRerender(){
+  clearTimeout(typingRerenderTimer);
+  typingRerenderTimer = setTimeout(()=>{
+    typingRerenderTimer = null;
+    rerender();
+  }, 300);
+}
 document.addEventListener('input', e=>{
   const t = e.target;
   if(t.matches('.f-text, .f-num, input[type="date"]')){
     handleFieldChange(t);
-    if(!isUnfinishedNumericInput(t)) rerender();
+    /* State updates instantly; the heavy rebuild (computed cells, totals,
+       print document) waits until a 300ms pause in typing so keystrokes
+       are never blocked by rendering. */
+    if(!isUnfinishedNumericInput(t)) scheduleTypingRerender();
   }
 });
 document.addEventListener('focusout', e=>{
@@ -4027,6 +4382,13 @@ document.addEventListener('click', e=>{
   switch(ds.action){
     case 'add-section': addSection(); break;
     case 'remove-section': removeSection(ds.section); break;
+    case 'move-section': moveSection(ds.section, parseInt(ds.dir,10)||0); break;
+    case 'toggle-item-break': toggleItemBreak(ds.section, ds.group, ds.item, isOpt); break;
+    case 'toggle-preview': togglePreview(); break;
+    case 'undo': undoChange(); break;
+    case 'redo': redoChange(); break;
+    case 'preview-toggle-break': previewToggleBreak(ds.pbitem); break;
+    case 'preview-toggle-block-break': previewToggleBlockBreak(ds.brkey); break;
     case 'duplicate-section': duplicateSection(ds.section); break;
     case 'add-group': addGroup(ds.section, isOpt, GROUP_PRESETS[ds.preset]||GROUP_PRESETS.custom); break;
     case 'remove-group': removeGroup(ds.section, ds.group, isOpt); break;
@@ -4520,6 +4882,100 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initCloudFromStorage();
 });
 
+</script>
+<script>
+/* ===== One-time seed: ABC Place (KPMG) Saflock roofing quote =====
+   Creates the quote locally, sets it as the current quote, and pushes it to the
+   cloud list as soon as the Supabase connection is up. Runs once per browser
+   (guarded by a flag), then this block does nothing on later loads. */
+(function(){
+  var FLAG = 'ropa_seed_abc_kpmg_v1';
+  try{
+    if(localStorage.getItem(FLAG)) return;
+
+    /* Preserve whatever draft was open before, so nothing is lost */
+    var prevRaw = localStorage.getItem(STORE_KEY);
+    if(prevRaw){
+      try{ var prev = JSON.parse(prevRaw); if(prev && prev.id) localStorage.setItem(localCacheKey(prev.id), prevRaw); }catch(e){}
+    }
+
+    var steel = function(desc, detail, nos, len, kgm, extra){
+      return newLineItem(Object.assign({desc:desc, detail:detail, unit:'Kgs', weightMode:'custom', nos:nos, unitLength:len, kgPerM:kgm, rate:250}, extra||{}));
+    };
+    var meas = function(desc, detail, unit, qty, rate){
+      return newLineItem({desc:desc, detail:detail, unit:unit, qty:qty, rate:rate});
+    };
+
+    var midSteel = newGroup({name:'STEEL ITEMS', isSteel:true, connectionsPct:10, items:[
+      steel('Roof rafters','203x133x25 UB',5,15,25),
+      steel('Purlins','127x50x2',12,15,4.04),
+      steel('Column stubs at edges','203x133x25 UB',10,1.13,25),
+      steel('Column stubs at the middle','203x133x25 UB',5,1.63,25),
+      steel('Horizontal beam','305x165x40 UB',2,14,40),
+      steel('Bracings','75x75x6 RSA',8,4,6.85),
+      steel('Louver drip flashing','305mm girth, 2mm thick',1,52,4.7885,{useGirthCalc:true,girth:305,thickness:2}),
+      steel('Gutter support legs','100x100x3 SHS',4,1,9.14)
+    ]});
+
+    var midOther = newGroup({name:'ROOFING, RAINWATER & SITE ITEMS', isSteel:false, connectionsPct:0, items:[
+      newLineItem({desc:'1220mm girth galvanized gutter', detail:'2mm thick', unit:'Kgs', weightMode:'direct', directKg:976.854, rate:380}),
+      meas('Roof cover','IT5 roof sheeting (26 gauge)','SM',218.3,2550),
+      meas('Ridge flashing','610mm girth','LM',15,1100),
+      meas('Polyclosure on ridge line','Low pitch roof','LM',30,1250),
+      meas('Sealant tape on laps','Low pitch roof','LM',227,1000),
+      meas('Insulation','10mm Jumbolene insulation','SM',218.3,600),
+      meas('Aluminium louvers on eaves and gable ends','Powder coated aluminium louvers','SM',28,23000),
+      meas('Chemical anchorage','','No',106,1000),
+      meas('150mm UPVC downpipes drop to floor outlets','','LM',12,2500),
+      meas('Roof top lifting works','','Item',1,250000),
+      meas('Scaffolding','','Item',1,50000),
+      meas('Power source','','Item',1,100000),
+      meas('Road closure permit','','Item',1,40000),
+      meas('Crane hire 80T/160T with a 65m boom','','Item',1,2400000)
+    ]});
+
+    var wings = newGroup({name:'ROOFING SHEETS, RAINWATER & REPAIR ITEMS', isSteel:false, connectionsPct:0, items:[
+      meas('Removal of existing roofing sheets','Left & right wings','SM',231,250),
+      meas('Roof cover','IT5 roof sheeting (26 gauge)','SM',231,2481.17),
+      meas('Polyclosure on ridge and hip lines','Low pitch roof','LM',134,1250),
+      meas('Sealant tape on laps','Low pitch roof','LM',232,1000),
+      meas('Insulation','10mm Jumbolene insulation','SM',231,600),
+      meas('Ridge/hip cap flashing','610mm girth','LM',67,1100),
+      newLineItem({desc:'1220mm girth galvanized gutter', detail:'2mm thick', unit:'Kgs', weightMode:'direct', directKg:1187.548, rate:380}),
+      meas('Repainting the existing steel structure','After removal of existing IT5 sheets','SM',231,1000)
+    ]});
+
+    var q = {
+      id: uuid(),
+      meta:{
+        clientName:'KPMG', clientTagline:'', project:'ABC Place \u2013 Roofing Works (Saflock System)', location:'ABC Place',
+        quoteDate: todayISO(), quoteRef:'', preparedBy:'Dennis Kihiu', defaultVat:16, defaultConnections:10,
+        printCompact:true, printRepeatLetterhead:false
+      },
+      sections:[
+        newSection({title:'MIDDLE PART', roofPitch:'8', vatPct:16, groups:[midSteel, midOther]}),
+        newSection({title:'LEFT & RIGHT WINGS (PARTNERS LOUNGE & RIGHT WING)', roofPitch:'8', vatPct:16, groups:[wings]})
+      ],
+      paymentTerms:[
+        {label:'Deposit with order', pct:40},
+        {label:'On delivery of steel to site', pct:30},
+        {label:'On Completion', pct:20},
+        {label:'Retention for 6 months', pct:10}
+      ]
+    };
+
+    localStorage.setItem(FLAG, q.id);
+    state = q;
+    localStorage.setItem(STORE_KEY, JSON.stringify(q));
+    localStorage.setItem(localCacheKey(q.id), JSON.stringify(q));
+    localStorage.setItem(LAST_QUOTE_KEY, q.id);
+    rerender();
+    if(typeof cloud !== 'undefined' && cloud.client){ saveCurrentQuoteToCloud(); }
+    /* If the cloud connection is still coming up, connectCloud() will push this
+       quote itself: it sees the last-quote id is not in the cloud list and
+       calls saveCurrentQuoteToCloud() for exactly this case. */
+  }catch(e){ console.warn('ABC quote seed failed:', e); }
+})();
 </script>
 </body>
 </html>
