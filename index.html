@@ -160,6 +160,13 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .print-opts-grid label{display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600;}
 .print-opts-grid .f-text, .print-opts-grid .f-num{min-width:110px;}
 .print-opts-hint{font-size:11.5px; color:var(--steel); margin-top:8px;}
+.print-flag{white-space:nowrap;}
+.scale-presets{display:flex; flex-direction:column; gap:4px;}
+.scale-presets-label{font-size:12px; font-weight:600;}
+.scale-preset-btns{display:flex; gap:5px;}
+.btn-xs{padding:4px 8px; font-size:11px;}
+.group-noprint{opacity:.58;}
+.group-noprint .group-head::after{content:"NOT PRINTED"; font-size:9px; font-weight:700; letter-spacing:.5px; color:#B4632B; background:#FBEDE2; border:1px solid #E9C9AE; border-radius:4px; padding:1px 6px; margin-left:6px;}
 /* ---------- Print preview mode ---------- */
 .pv-break{display:none;}
 #previewBar{display:none;}
@@ -535,6 +542,7 @@ body.preview-mode #printArea{position:relative;}
 <div id="printArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 const CATALOG = {
  "IPE": {
@@ -2985,7 +2993,11 @@ function newLineItem(over){
   }, over||{});
 }
 function newGroup(over){
-  return Object.assign({ id:uid(), name:'STEEL ITEMS', isSteel:true, connectionsPct:10, items:[] }, over||{});
+  return Object.assign({ id:uid(), name:'STEEL ITEMS', isSteel:true, connectionsPct:10, printEnabled:true, items:[] }, over||{});
+}
+function groupPrints(g){ return g.printEnabled !== false; }
+function sectionHasPrintable(sec){
+  return (sec.groups||[]).some(groupPrints) || (sec.optionalEnabled && (sec.optionalGroups||[]).some(groupPrints));
 }
 function newSection(over){
   return Object.assign({
@@ -3130,10 +3142,11 @@ function itemAmount(it){
 function groupTotal(g){
   return g.items.reduce((s,it)=> s + itemAmount(it), 0);
 }
-function sectionCalc(sec){
+function sectionCalc(sec, filter){
   let running = 0;
   const rows = []; // {type:'group'|'subtotal'|'connections'|'totalsteel', ...}
-  sec.groups.forEach(g=>{
+  const groups = filter ? sec.groups.filter(filter) : sec.groups;
+  groups.forEach(g=>{
     const gt = groupTotal(g);
     if(g.isSteel){
       const conn = gt * num(g.connectionsPct)/100;
@@ -3151,7 +3164,8 @@ function sectionCalc(sec){
 
   let optSubTotal=0, optVat=0, optGrand=0;
   if(sec.optionalEnabled){
-    optSubTotal = sec.optionalGroups.reduce((s,g)=> s+groupTotal(g), 0);
+    const optGroups = filter ? sec.optionalGroups.filter(filter) : sec.optionalGroups;
+    optSubTotal = optGroups.reduce((s,g)=> s+groupTotal(g), 0);
     optVat = optSubTotal * num(sec.optionalVatPct)/100;
     optGrand = optSubTotal + optVat;
   }
@@ -3159,6 +3173,9 @@ function sectionCalc(sec){
 }
 function documentGrandTotal(){
   return state.sections.reduce((s,sec)=> s + sectionCalc(sec).grandTotal, 0);
+}
+function documentGrandTotalPrint(){
+  return state.sections.reduce((s,sec)=> s + sectionCalc(sec, groupPrints).grandTotal, 0);
 }
 
 /* ----------------------- State mutation helpers ----------------------- */
@@ -3737,6 +3754,14 @@ function renderMeta(){
         <label>Print scale %
           <input type="text" inputmode="decimal" class="f-num" data-scope="meta" data-field="printScale" data-path="meta||||printScale|0" value="${m.printScale||100}" title="50 – 150. 100 = normal size; smaller fits more per page.">
         </label>
+        <div class="scale-presets">
+          <span class="scale-presets-label">Quick scale</span>
+          <div class="scale-preset-btns">
+            ${btn('Fit more (75%)','set-scale',{val:75},'btn-ghost btn-xs')}
+            ${btn('Normal (100%)','set-scale',{val:100},'btn-ghost btn-xs')}
+            ${btn('Enlarge (125%)','set-scale',{val:125},'btn-ghost btn-xs')}
+          </div>
+        </div>
         <label>Combined summary
           <select class="f-text" data-scope="meta" data-field="summaryPosition" data-path="meta||||summaryPosition|0">
             <option value="end" ${(m.summaryPosition||'end')!=='start'?'selected':''}>After structures (end)</option>
@@ -3866,10 +3891,11 @@ function renderGroup(sec, g, isOptional){
       <tr class="sum-row total-row"><td colspan="7">Total for steel</td><td class="amt-col">${money(gt+conn)}</td><td></td></tr>`;
   }
   return `
-  <div class="group-block ${g.isSteel?'group-steel':''}">
+  <div class="group-block ${g.isSteel?'group-steel':''} ${groupPrints(g)?'':'group-noprint'}">
     <div class="group-head">
       <input type="text" class="f-text group-name" data-scope="group" data-section="${sec.id}" data-group="${g.id}" data-field="name" data-optional="${isOptional?1:0}" data-path="${path('group',sec.id,g.id,'','name',isOptional)}" value="${esc(g.name)}">
       <label class="inline-chk steel-flag"><input type="checkbox" data-scope="group" data-section="${sec.id}" data-group="${g.id}" data-field="isSteel" data-optional="${isOptional?1:0}" data-path="${path('group',sec.id,g.id,'','isSteel',isOptional)}" ${g.isSteel?'checked':''}> treat as steel (adds connections %)</label>
+      <label class="inline-chk print-flag" title="Include this group when printing or exporting the PDF-style quote"><input type="checkbox" data-scope="group" data-section="${sec.id}" data-group="${g.id}" data-field="printEnabled" data-optional="${isOptional?1:0}" data-path="${path('group',sec.id,g.id,'','printEnabled',isOptional)}" ${groupPrints(g)?'checked':''}> print / include</label>
       <span class="spacer"></span>
       ${btn('Remove group','remove-group',{section:sec.id,group:g.id,optional:isOptional?1:0},'btn-ghost btn-danger-text')}
     </div>
@@ -4081,7 +4107,7 @@ function renderPrintSection(sec, idx, isLast, opts){
   opts = opts || {};
   let n = 0;
   let bodyRows = '';
-  sec.groups.forEach(g=>{
+  sec.groups.filter(groupPrints).forEach(g=>{
     bodyRows += printGroupHeaderRow(g.name);
     g.items.forEach(it=>{ n++; bodyRows += printItemRow(n, it); });
     if(g.isSteel){
@@ -4092,16 +4118,16 @@ function renderPrintSection(sec, idx, isLast, opts){
       bodyRows += printSumRow('Total for Steel', gt+conn, true);
     }
   });
-  const calc = sectionCalc(sec);
+  const calc = sectionCalc(sec, groupPrints);
   bodyRows += printSumRow('SUB TOTAL', calc.subTotal, true, 'sum:'+sec.id);
   bodyRows += printSumRow(`ADD ${sec.vatPct}% VAT`, calc.vatAmt, false);
   bodyRows += printSumRow('GRAND TOTAL (inclusive of VAT)', calc.grandTotal, true);
 
   let optionalHtml = '';
-  if(sec.optionalEnabled){
+  if(sec.optionalEnabled && sec.optionalGroups.some(groupPrints)){
     let on = 0;
     let optBodyRows = '';
-    sec.optionalGroups.forEach(g=>{
+    sec.optionalGroups.filter(groupPrints).forEach(g=>{
       g.items.forEach(it=>{ on++; optBodyRows += printItemRow(on, it); });
     });
     optBodyRows += printSumRow('TOTAL', calc.optSubTotal, true);
@@ -4199,15 +4225,16 @@ function printClosing(){
 }
 
 function renderPrintSummaryPage(compact){
-  if(state.sections.length<2) return '';
-  const rows = state.sections.map(sec=>`<tr><td class="p-desc">${esc(sec.title)}</td><td class="p-amt">${money(sectionCalc(sec).grandTotal)}</td></tr>`).join('');
+  const printSecs = state.sections.filter(sectionHasPrintable);
+  if(printSecs.length<2) return '';
+  const rows = printSecs.map(sec=>`<tr><td class="p-desc">${esc(sec.title)}</td><td class="p-amt">${money(sectionCalc(sec, groupPrints).grandTotal)}</td></tr>`).join('');
   const br = blockBreaks()['summary'];
   const inner = `
     <div class="p-section-title">${pvBlockHandle('summary')}COMBINED QUOTE SUMMARY</div>
     <table class="p-table p-opt-table">
       <thead><tr><th>Structure / Section</th><th>Grand Total (KSH)</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr class="p-sumrow p-bold"><td>TOTAL QUOTE VALUE</td><td class="p-amt">${money(documentGrandTotal())}</td></tr></tfoot>
+      <tfoot><tr class="p-sumrow p-bold"><td>TOTAL QUOTE VALUE</td><td class="p-amt">${money(documentGrandTotalPrint())}</td></tr></tfoot>
     </table>`;
   return compact ? `<div class="print-flow-section${br?' p-pagebreak':''}">${inner}</div>` : `<div class="print-page">${inner}</div>`;
 }
@@ -4236,12 +4263,13 @@ function renderPrintArea(){
   const repeatLetterhead = !!m.printRepeatLetterhead;
   let html = '';
 
+  const printSecList = state.sections.filter(sectionHasPrintable);
   if(compact){
     // Single letterhead up top unless the user asked to repeat it per structure.
-    const overallLetterhead = !repeatLetterhead ? printLetterhead(state.sections[0], true) : '';
-    const sectionsHtml = state.sections.map((sec,i)=>renderPrintSection(sec,i,false,{
+    const overallLetterhead = !repeatLetterhead ? printLetterhead(printSecList[0]||state.sections[0], true) : '';
+    const sectionsHtml = state.sections.map((sec,i)=>sectionHasPrintable(sec) ? renderPrintSection(sec,i,false,{
       compact:true, repeatLetterhead, showOverallLetterhead:false
-    })).join('');
+    }) : '').join('');
     const summary = renderPrintSummaryPage(true);
     const closing = `<div class="print-flow-section">${printClosing()}</div>`;
     const summaryFirst = m.summaryPosition === 'start';
@@ -4249,11 +4277,11 @@ function renderPrintArea(){
       ? `<div class="print-flow">${overallLetterhead}${summary}${sectionsHtml}${closing}</div>`
       : `<div class="print-flow">${overallLetterhead}${sectionsHtml}${summary}${closing}</div>`;
   } else {
-    const pages = state.sections.map((sec,i)=>renderPrintSection(sec,i,i===state.sections.length-1 && state.sections.length===1,{compact:false})).join('');
-    const summary = state.sections.length>1 ? renderPrintSummaryPage(false) : '';
+    const pages = state.sections.map((sec,i)=>sectionHasPrintable(sec) ? renderPrintSection(sec,i,printSecList.length===1 && sec===printSecList[0],{compact:false}) : '').join('');
+    const summary = printSecList.length>1 ? renderPrintSummaryPage(false) : '';
     let closingPage = '';
-    if(state.sections.length>1){
-      const lastSec = state.sections[state.sections.length-1];
+    if(printSecList.length>1){
+      const lastSec = printSecList[printSecList.length-1];
       closingPage = `<div class="print-page">${printLetterhead(lastSec, true)}${printClosing()}</div>`;
     }
     html = (m.summaryPosition === 'start') ? (summary + pages + closingPage) : (pages + summary + closingPage);
@@ -4387,6 +4415,11 @@ document.addEventListener('click', e=>{
     case 'toggle-preview': togglePreview(); break;
     case 'undo': undoChange(); break;
     case 'redo': redoChange(); break;
+    case 'set-scale': {
+      state.meta.printScale = Math.min(150, Math.max(50, parseInt(ds.val,10)||100));
+      saveState(); rerender();
+      break;
+    }
     case 'preview-toggle-break': previewToggleBreak(ds.pbitem); break;
     case 'preview-toggle-block-break': previewToggleBlockBreak(ds.brkey); break;
     case 'duplicate-section': duplicateSection(ds.section); break;
@@ -4468,7 +4501,231 @@ function excelItemRow(no, groupName, it){
     no, groupName, desc, itemProfileText(it), c.nos, c.unitLength, c.totalLength, c.wpu, it.unit, c.qty, it.rate, excelMoney(itemAmount(it))
   ].map(v=>excelCell(v)).join('')}</tr>`;
 }
+/* ============================================================
+   Formula-driven Excel export (one worksheet tab per structure)
+   - Line amounts are live formulas (Nos*Len*kg/m*Rate, Qty*Rate, etc.)
+   - Group and section totals are SUM() / arithmetic formulas
+   - Always includes every group (print ticks are ignored here)
+   ============================================================ */
+function colLetter(idx){ // 0-based -> A, B, ...
+  let s = '';
+  idx++;
+  while(idx>0){ const m=(idx-1)%26; s=String.fromCharCode(65+m)+s; idx=Math.floor((idx-1)/26); }
+  return s;
+}
+// Column layout for the item table (0-based):
+// 0 #  1 Description  2 Profile  3 Nos  4 Len  5 Tot m  6 kg/m  7 Unit  8 Qty  9 Rate  10 Amount
+const XL_COLS = ['#','DESCRIPTION','PROFILE','NOS','LEN','TOT M','kg/m','UNIT','QTY','RATE','AMOUNT'];
+const XL_AMT = 10, XL_QTY = 8, XL_RATE = 9, XL_NOS = 3, XL_LEN = 4, XL_TOTM = 5, XL_KGM = 6;
+
 function exportExcel(){
+  if(!window.XLSX){
+    // Library didn't load (offline?) — fall back to the simple table export.
+    toast('Excel library unavailable — exporting basic version');
+    return exportExcelLegacy();
+  }
+  const wb = XLSX.utils.book_new();
+  const usedNames = {};
+  const money = '#,##0.00';
+  const wt = '#,##0.00';
+
+  state.sections.forEach((sec, si)=>{
+    const aoa = [];      // rows of cell values
+    const merges = [];
+    const fmt = {};      // "r,c" -> number format
+    const formula = {};  // "r,c" -> formula string (no leading =)
+    const formulaCache = {}; // "r,c" -> computed numeric value
+    let r = 0;
+
+    const put = (row)=>{ aoa.push(row); r++; };
+    const rowEmpty = ()=> put([]);
+
+    // ---- Letterhead / meta block ----
+    put(['Ropa Engineering Co. Ltd']);
+    put(['Structural Engineers & Steel Fabricators']);
+    put(['STEEL QUOTATION', '', '', '', '', '', '', '', '', '', fmtDateLong(state.meta.quoteDate)]);
+    put(['Client', state.meta.clientName||'', '', '', 'Project', state.meta.project||'']);
+    put(['Location', state.meta.location||'', '', '', 'Prepared by', state.meta.preparedBy||'']);
+    if(sec.roofPitch) put(['Structure', sec.title||'', '', '', 'Roof pitch', sec.roofPitch+'\u00b0']);
+    else put(['Structure', sec.title||'']);
+    rowEmpty();
+
+    // ---- Header row ----
+    const headRow = r;
+    put(XL_COLS.slice());
+    // (styling of header handled after)
+
+    let n = 0;
+    const sectionTotalCells = []; // cells to add for SUB TOTAL (group totals incl. connections)
+
+    sec.groups.forEach(g=>{
+      // group name banner
+      put([g.name]);
+      merges.push({s:{r:r-1,c:0}, e:{r:r-1,c:XL_AMT}});
+      const groupNameRow = r-1;
+
+      const amountRowsForGroup = [];
+      g.items.forEach(it=>{
+        n++;
+        const c = printRowCells(it);
+        const desc = (it.desc||'') + (it.detail?(' \u2014 '+it.detail):'');
+        const rowVals = [
+          n, desc, itemProfileText(it),
+          numOrBlank(c.nos), numOrBlank(c.unitLength), numOrBlank(c.totalLength),
+          numOrBlank(c.wpu), it.unit||'', roundNum(itemQtyDisplay(it)), num(it.rate), 0
+        ];
+        put(rowVals);
+        const rr = r-1; // this data row (0-based)
+        // Amount formula depends on how qty is derived
+        const qtyRef = `${colLetter(XL_QTY)}${rr+1}`;
+        const rateRef = `${colLetter(XL_RATE)}${rr+1}`;
+        formula[`${rr},${XL_AMT}`] = `${qtyRef}*${rateRef}`;
+        formulaCache[`${rr},${XL_AMT}`] = roundNum(itemAmount(it));
+        // Where the QTY itself is a product (catalog/custom weight), make QTY a formula too
+        if(it.unit==='Kgs' && (it.weightMode==='catalog'||it.weightMode==='custom')){
+          const nosRef = `${colLetter(XL_NOS)}${rr+1}`;
+          const lenRef = `${colLetter(XL_LEN)}${rr+1}`;
+          const kgmRef = `${colLetter(XL_KGM)}${rr+1}`;
+          const totmRef = `${colLetter(XL_TOTM)}${rr+1}`;
+          formula[`${rr},${XL_TOTM}`] = `${nosRef}*${lenRef}`;
+          formulaCache[`${rr},${XL_TOTM}`] = roundNum(num(it.nos)*num(it.unitLength));
+          formula[`${rr},${XL_QTY}`] = `${totmRef}*${kgmRef}`;
+          formulaCache[`${rr},${XL_QTY}`] = roundNum(itemQtyDisplay(it));
+        }
+        fmt[`${rr},${XL_QTY}`] = wt;
+        fmt[`${rr},${XL_RATE}`] = money;
+        fmt[`${rr},${XL_AMT}`] = money;
+        amountRowsForGroup.push(rr);
+      });
+
+      // group subtotal (sum of AMOUNT cells for this group)
+      let groupTotalCellRef;
+      if(amountRowsForGroup.length){
+        const first = amountRowsForGroup[0], last = amountRowsForGroup[amountRowsForGroup.length-1];
+        const sumRange = `${colLetter(XL_AMT)}${first+1}:${colLetter(XL_AMT)}${last+1}`;
+        if(g.isSteel){
+          const gtVal = groupTotal(g);
+          const connVal = gtVal*num(g.connectionsPct)/100;
+          // Steel sub-total
+          put(['Steel Sub-total','','','','','','','','','','']);
+          const stRow = r-1;
+          merges.push({s:{r:stRow,c:0},e:{r:stRow,c:XL_AMT-1}});
+          formula[`${stRow},${XL_AMT}`] = `SUM(${sumRange})`;
+          formulaCache[`${stRow},${XL_AMT}`] = roundNum(gtVal);
+          fmt[`${stRow},${XL_AMT}`] = money;
+          const stRef = `${colLetter(XL_AMT)}${stRow+1}`;
+          // MS Connections
+          put([`MS Connections (${num(g.connectionsPct)}% of steel)`,'','','','','','','','','','']);
+          const connRow = r-1;
+          merges.push({s:{r:connRow,c:0},e:{r:connRow,c:XL_AMT-1}});
+          formula[`${connRow},${XL_AMT}`] = `${stRef}*${num(g.connectionsPct)}/100`;
+          formulaCache[`${connRow},${XL_AMT}`] = roundNum(connVal);
+          fmt[`${connRow},${XL_AMT}`] = money;
+          const connRef = `${colLetter(XL_AMT)}${connRow+1}`;
+          // Total for steel
+          put(['Total for Steel','','','','','','','','','','']);
+          const tsRow = r-1;
+          merges.push({s:{r:tsRow,c:0},e:{r:tsRow,c:XL_AMT-1}});
+          formula[`${tsRow},${XL_AMT}`] = `${stRef}+${connRef}`;
+          formulaCache[`${tsRow},${XL_AMT}`] = roundNum(gtVal+connVal);
+          fmt[`${tsRow},${XL_AMT}`] = money;
+          groupTotalCellRef = `${colLetter(XL_AMT)}${tsRow+1}`;
+        } else {
+          groupTotalCellRef = null;
+          // for non-steel, we sum the amount range directly at section level
+          sectionTotalCells.push(`SUM(${sumRange})`);
+        }
+        if(groupTotalCellRef) sectionTotalCells.push(groupTotalCellRef);
+      }
+    });
+
+    // ---- Section totals ----
+    rowEmpty();
+    put(['SUB TOTAL','','','','','','','','','','']);
+    const subRow = r-1;
+    merges.push({s:{r:subRow,c:0},e:{r:subRow,c:XL_AMT-1}});
+    const scalc = sectionCalc(sec);
+    formula[`${subRow},${XL_AMT}`] = sectionTotalCells.length ? sectionTotalCells.join('+') : '0';
+    formulaCache[`${subRow},${XL_AMT}`] = roundNum(scalc.subTotal);
+    fmt[`${subRow},${XL_AMT}`] = money;
+    const subRef = `${colLetter(XL_AMT)}${subRow+1}`;
+
+    put([`ADD ${num(sec.vatPct)}% VAT`,'','','','','','','','','','']);
+    const vatRow = r-1;
+    merges.push({s:{r:vatRow,c:0},e:{r:vatRow,c:XL_AMT-1}});
+    formula[`${vatRow},${XL_AMT}`] = `${subRef}*${num(sec.vatPct)}/100`;
+    formulaCache[`${vatRow},${XL_AMT}`] = roundNum(scalc.vatAmt);
+    fmt[`${vatRow},${XL_AMT}`] = money;
+    const vatRef = `${colLetter(XL_AMT)}${vatRow+1}`;
+
+    put(['GRAND TOTAL (inclusive of VAT)','','','','','','','','','','']);
+    const grRow = r-1;
+    merges.push({s:{r:grRow,c:0},e:{r:grRow,c:XL_AMT-1}});
+    formula[`${grRow},${XL_AMT}`] = `${subRef}+${vatRef}`;
+    formulaCache[`${grRow},${XL_AMT}`] = roundNum(scalc.grandTotal);
+    fmt[`${grRow},${XL_AMT}`] = money;
+
+    if(sec.note){ rowEmpty(); put(['Note:', sec.note]); }
+
+    // Build worksheet
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    // apply formulas (with a cached numeric value so formats stick and
+    // the sheet shows numbers even before Excel recalculates)
+    Object.keys(formula).forEach(key=>{
+      const [rr,cc] = key.split(',').map(Number);
+      const addr = XLSX.utils.encode_cell({r:rr,c:cc});
+      const cached = formulaCache[key];
+      ws[addr] = {t:'n', f:formula[key], v:(cached==null?0:cached)};
+    });
+    // apply number formats
+    Object.keys(fmt).forEach(key=>{
+      const [rr,cc] = key.split(',').map(Number);
+      const addr = XLSX.utils.encode_cell({r:rr,c:cc});
+      if(ws[addr]) ws[addr].z = fmt[key];
+    });
+    ws['!merges'] = merges;
+    ws['!cols'] = [
+      {wch:4},{wch:34},{wch:20},{wch:7},{wch:7},{wch:8},{wch:8},{wch:6},{wch:12},{wch:12},{wch:14}
+    ];
+    // freeze header
+    ws['!freeze'] = {xSplit:0, ySplit:headRow+1};
+    ws['!margins'] = {left:0.5, right:0.5, top:0.6, bottom:0.6, header:0.3, footer:0.3};
+
+    // sheet name: unique, <=31 chars, no illegal chars
+    let name = (sec.title||('Structure '+(si+1))).replace(/[\\\/\?\*\[\]:]/g,' ').trim().slice(0,28) || ('Sheet'+(si+1));
+    let base = name, k = 2;
+    while(usedNames[name.toLowerCase()]){ name = (base.slice(0,25)+' '+k); k++; }
+    usedNames[name.toLowerCase()] = true;
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+
+  // ---- Summary tab when multiple structures ----
+  if(state.sections.length>1){
+    const aoa = [['COMBINED QUOTE SUMMARY'], [], ['Structure / Section','Grand Total (KSH)']];
+    state.sections.forEach(sec=>{ aoa.push([sec.title||'', sectionCalc(sec).grandTotal]); });
+    aoa.push(['TOTAL QUOTE VALUE', 0]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const firstDataRow = 3; // 0-based row index of first structure
+    const lastDataRow = firstDataRow + state.sections.length - 1;
+    // format money col + sum
+    for(let rr=firstDataRow; rr<=lastDataRow; rr++){
+      const a = XLSX.utils.encode_cell({r:rr,c:1});
+      if(ws[a]) ws[a].z = '#,##0.00';
+    }
+    const totRow = lastDataRow+1;
+    const totAddr = XLSX.utils.encode_cell({r:totRow,c:1});
+    ws[totAddr] = {t:'n', f:`SUM(B${firstDataRow+1}:B${lastDataRow+1})`, v:roundNum(documentGrandTotal()), z:'#,##0.00'};
+    ws['!cols'] = [{wch:44},{wch:18}];
+    ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:1}}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+  }
+
+  XLSX.writeFile(wb, fileBaseName() + '.xlsx');
+}
+function numOrBlank(v){ return (v===''||v==null) ? '' : Number(v); }
+function roundNum(n){ return Math.round(n*100)/100; }
+
+function exportExcelLegacy(){
   const dateStr = fmtDateLong(state.meta.quoteDate);
   let body = `
     <h1>Ropa Engineering Co. Ltd - Steel Quotation</h1>
