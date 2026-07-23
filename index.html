@@ -161,6 +161,11 @@ input.f-text:focus, input.f-num:focus, select.f-select:focus, input[type="date"]
 .print-opts-grid .f-text, .print-opts-grid .f-num{min-width:110px;}
 .print-opts-hint{font-size:11.5px; color:var(--steel); margin-top:8px;}
 .print-flag{white-space:nowrap;}
+.pterm-noterow{margin:-2px 0 10px 0; padding-left:2px;}
+.pterm-label{font-weight:600;}
+.pterm-label::placeholder{font-weight:400; opacity:.55;}
+.pterm-note{width:100%; font-size:12px; font-style:italic; color:var(--steel);}
+.pterm-note::placeholder{font-style:italic; opacity:.6;}
 .scale-presets{display:flex; flex-direction:column; gap:4px;}
 .scale-presets-label{font-size:12px; font-weight:600;}
 .scale-preset-btns{display:flex; gap:5px;}
@@ -180,6 +185,11 @@ body.preview-mode .pv-break{display:inline-flex; align-items:center; justify-con
 body.preview-mode .pv-break:hover{background:#14304F; color:#fff; border-color:#14304F;}
 body.preview-mode .pv-break.on{background:#B08F2E; color:#fff; border-color:#B08F2E;}
 body.preview-mode tr.p-pagebreak td{border-top:3px dashed #B08F2E;}
+body.preview-mode .pv-edit{outline:1px dashed #9FB4C7; outline-offset:2px; border-radius:2px; cursor:text; min-width:40px; display:inline-block;}
+body.preview-mode .pv-edit:hover{background:#EAF2FA; outline-color:#5B87B0;}
+body.preview-mode .pv-edit:focus{background:#FFF8DC; outline:2px solid #B08F2E; outline-offset:1px;}
+body.preview-mode .p-pterm-note .pv-edit:empty::before{content:"add note\2026"; color:#9AA6B2;}
+.pv-edit{outline:none;}
 body.preview-mode div.p-pagebreak{border-top:3px dashed #B08F2E; padding-top:6px;}
 body.preview-mode #printArea{position:relative;}
 #pvPageOverlay{position:absolute; inset:0; pointer-events:none; z-index:5;}
@@ -316,6 +326,7 @@ body.preview-mode #printArea{position:relative;}
   .p-closing{margin-top:18px;}
   .p-pterms-title{font-weight:700; font-size:10.5pt; margin-bottom:6px; color:#14304F;}
   .p-pterm{font-size:9.5pt; margin-bottom:3px;}
+  .p-pterm-note{font-size:8.5pt; font-style:italic; color:#4A5560; margin:1px 0 0 18px;}
   .p-regards{margin-top:18px; font-size:9.5pt;}
   .p-sig{height:46px; display:block; margin:4px 0;}
   .p-preparedby{font-weight:700;}
@@ -3593,21 +3604,49 @@ function toast(msg){
   toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 2400);
 }
 
+/* Commit inline preview edits (payment milestone name / note) when focus leaves */
+document.addEventListener('focusout', e=>{
+  const el = e.target;
+  if(!el || !el.dataset || !el.dataset.ptfield) return;
+  const idx = parseInt(el.dataset.ptidx, 10);
+  const pt = state.paymentTerms[idx];
+  if(!pt) return;
+  const field = el.dataset.ptfield;
+  const val = (el.textContent || '').replace(/\s+/g,' ').trim();
+  if(pt[field] === val) return;
+  pt[field] = val;
+  saveState();
+  renderPrintArea();
+});
+/* Enter finishes the edit instead of inserting a line break */
 document.addEventListener('keydown', e=>{
+  const el = e.target;
+  if(el && el.dataset && el.dataset.ptfield && e.key === 'Enter'){
+    e.preventDefault();
+    el.blur();
+  }
+});
+
+document.addEventListener('keydown', e=>{
+  const ae = document.activeElement;
+  const editing = !!(ae && (ae.isContentEditable || ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA'));
   if(e.key==='Escape'){
+    if(editing && ae.isContentEditable){ ae.blur(); return; }
     if(uiModal) closeModal();
     else if(typeof previewMode!=='undefined' && previewMode) togglePreview();
     return;
   }
   if((e.ctrlKey || e.metaKey) && !e.altKey){
     const k = e.key.toLowerCase();
+    /* Let the browser handle undo inside a field the user is typing in */
+    if(editing && (k==='z' || k==='y')) return;
     if(k==='z'){ e.preventDefault(); if(e.shiftKey) redoChange(); else undoChange(); }
     else if(k==='y'){ e.preventDefault(); redoChange(); }
   }
 });
 
 function addPaymentTerm(){
-  state.paymentTerms.push({label:'New term', pct:0});
+  state.paymentTerms.push({label:'New term', pct:0, note:''});
   rebalancePaymentTerms();
   saveState(); rerender();
 }
@@ -3769,6 +3808,7 @@ function renderMeta(){
           </select>
         </label>
       </div>
+      <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printSummaryOnly" data-path="meta||||printSummaryOnly|0" ${m.printSummaryOnly?'checked':''}> Summary only \u2014 print just the combined summary (ticked groups only), no item breakdowns</label>
       <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printCompact" data-path="meta||||printCompact|0" ${m.printCompact!==false?'checked':''}> Compact print layout \u2014 pack structures together to fill each page, instead of one page per structure</label>
       <label class="inline-chk"><input type="checkbox" data-scope="meta" data-field="printRepeatLetterhead" data-path="meta||||printRepeatLetterhead|0" ${m.printRepeatLetterhead?'checked':''} ${m.printCompact===false?'disabled':''}> Repeat full letterhead for every structure (otherwise shown once at the top)</label>
       <div class="print-opts-hint">Tip: the \u2933 button on any row starts that row on a new page when printing. Use the \u2191\u2193 buttons on each sheet header to change the order sheets print in.</div>
@@ -3981,9 +4021,12 @@ function renderPaymentTerms(){
       : `<input type="text" inputmode="decimal" class="f-num w-xs" data-scope="paymentTerm" data-field="pct" data-path="${path('paymentTerm','','','idx'+idx,'pct',0)}" data-idx="${idx}" value="${pt.pct}">`;
     return `
     <div class="pterm-row">
-      <input type="text" class="f-text" data-scope="paymentTerm" data-field="label" data-path="${path('paymentTerm','','','idx'+idx,'label',0)}" data-idx="${idx}" value="${esc(pt.label)}">
+      <input type="text" class="f-text pterm-label" autocomplete="off" placeholder="Milestone name \u2014 e.g. Deposit with order" data-scope="paymentTerm" data-field="label" data-path="${path('paymentTerm','','','idx'+idx,'label',0)}" data-idx="${idx}" value="${esc(pt.label||'')}">
       ${pctField} %
       ${btn('\u2715','remove-payment-term',{idx},'btn-icon btn-danger')}
+    </div>
+    <div class="pterm-noterow">
+      <input type="text" class="f-text pterm-note" autocomplete="off" placeholder="Note for this term (optional) \u2014 e.g. payable against invoice, on signing of contract\u2026" data-scope="paymentTerm" data-field="note" data-path="${path('paymentTerm','','','idx'+idx,'note',0)}" data-idx="${idx}" value="${esc(pt.note||'')}">
     </div>`;
   }).join('');
   const totalRound = Math.round(total*100)/100;
@@ -4023,6 +4066,7 @@ function renderApp(){
     ${renderDocSummary()}
     ${renderPaymentTerms()}
   `;
+  syncInputValues();
   renderPrintArea();
 }
 
@@ -4206,7 +4250,20 @@ function printLetterhead(sec, overall){
 }
 
 function printClosing(){
-  const rows = state.paymentTerms.map((pt,i)=>`<div class="p-pterm">${i+1}.0 ${esc(pt.label)} <b>${pt.pct}%</b></div>`).join('');
+  /* In preview mode the milestone name and note are editable in place, so you
+     can retype them where you see them. They stay plain text when printed. */
+  const pvEdit = (typeof previewMode !== 'undefined' && previewMode);
+  const ea = (i, field) => pvEdit
+    ? ` contenteditable="true" class="pv-edit" data-ptidx="${i}" data-ptfield="${field}" spellcheck="false" title="Click to edit"`
+    : '';
+  const rows = state.paymentTerms.map((pt,i)=>{
+    const label = `<span${ea(i,'label')}>${esc(pt.label)}</span>`;
+    const showNote = pt.note || pvEdit;
+    const note = showNote
+      ? `<div class="p-pterm-note"><span${ea(i,'note')}>${esc(pt.note||'')}</span></div>`
+      : '';
+    return `<div class="p-pterm">${i+1}.0 ${label} <b>${pt.pct}%</b>${note}</div>`;
+  }).join('');
   const br = blockBreaks()['closing'];
   return `
   <div class="p-closing${br?' p-pagebreak':''}">
@@ -4224,17 +4281,17 @@ function printClosing(){
   </div>`;
 }
 
-function renderPrintSummaryPage(compact){
+function renderPrintSummaryPage(compact, force){
   const printSecs = state.sections.filter(sectionHasPrintable);
-  if(printSecs.length<2) return '';
+  if(printSecs.length < (force ? 1 : 2)) return '';
   const rows = printSecs.map(sec=>`<tr><td class="p-desc">${esc(sec.title)}</td><td class="p-amt">${money(sectionCalc(sec, groupPrints).grandTotal)}</td></tr>`).join('');
   const br = blockBreaks()['summary'];
   const inner = `
     <div class="p-section-title">${pvBlockHandle('summary')}COMBINED QUOTE SUMMARY</div>
     <table class="p-table p-opt-table">
-      <thead><tr><th>Structure / Section</th><th>Grand Total (KSH)</th></tr></thead>
+      <thead><tr><th>Structure / Section</th><th>Grand Total (KSH) \u2014 incl. VAT</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr class="p-sumrow p-bold"><td>TOTAL QUOTE VALUE</td><td class="p-amt">${money(documentGrandTotalPrint())}</td></tr></tfoot>
+      <tfoot><tr class="p-sumrow p-bold"><td>TOTAL QUOTE VALUE (incl. VAT)</td><td class="p-amt">${money(documentGrandTotalPrint())}</td></tr></tfoot>
     </table>`;
   return compact ? `<div class="print-flow-section${br?' p-pagebreak':''}">${inner}</div>` : `<div class="print-page">${inner}</div>`;
 }
@@ -4264,6 +4321,21 @@ function renderPrintArea(){
   let html = '';
 
   const printSecList = state.sections.filter(sectionHasPrintable);
+
+  if(m.printSummaryOnly){
+    /* Summary-only document: letterhead, the combined summary (which counts
+       only ticked groups), then the payment terms / signature block. */
+    const lead = printLetterhead(printSecList[0]||state.sections[0], true);
+    const summary = renderPrintSummaryPage(true, true);
+    const closing = `<div class="print-flow-section">${printClosing()}</div>`;
+    document.getElementById('printArea').innerHTML =
+      `<div class="print-flow">${lead}${summary}${closing}</div>`;
+    if(typeof previewMode !== 'undefined' && previewMode){
+      requestAnimationFrame(renderPreviewPageLines);
+    }
+    return;
+  }
+
   if(compact){
     // Single letterhead up top unless the user asked to repeat it per structure.
     const overallLetterhead = !repeatLetterhead ? printLetterhead(printSecList[0]||state.sections[0], true) : '';
@@ -4315,6 +4387,20 @@ function rerender(){
   }
 }
 function cssEscape(s){ return (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/[^a-zA-Z0-9_-]/g,'\\$&'); }
+
+/* Browsers restore form-field values positionally after a reload, which can
+   leave an input showing stale (or blank) text even though we just rendered
+   the correct value into its markup. Force every rendered input's live value
+   to match the value we actually wrote. */
+function syncInputValues(){
+  const nodes = document.querySelectorAll('#app input[data-path]');
+  for(let i=0;i<nodes.length;i++){
+    const el = nodes[i];
+    if(el.type === 'checkbox' || el.type === 'radio') continue;
+    const want = el.getAttribute('value');
+    if(want !== null && el.value !== want) el.value = want;
+  }
+}
 
 function handleFieldChange(target){
   const ds = target.dataset;
@@ -4701,9 +4787,9 @@ function exportExcel(){
 
   // ---- Summary tab when multiple structures ----
   if(state.sections.length>1){
-    const aoa = [['COMBINED QUOTE SUMMARY'], [], ['Structure / Section','Grand Total (KSH)']];
+    const aoa = [['COMBINED QUOTE SUMMARY'], [], ['Structure / Section','Grand Total (KSH) - incl. VAT']];
     state.sections.forEach(sec=>{ aoa.push([sec.title||'', sectionCalc(sec).grandTotal]); });
-    aoa.push(['TOTAL QUOTE VALUE', 0]);
+    aoa.push(['TOTAL QUOTE VALUE (incl. VAT)', 0]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const firstDataRow = 3; // 0-based row index of first structure
     const lastDataRow = firstDataRow + state.sections.length - 1;
@@ -4715,7 +4801,7 @@ function exportExcel(){
     const totRow = lastDataRow+1;
     const totAddr = XLSX.utils.encode_cell({r:totRow,c:1});
     ws[totAddr] = {t:'n', f:`SUM(B${firstDataRow+1}:B${lastDataRow+1})`, v:roundNum(documentGrandTotal()), z:'#,##0.00'};
-    ws['!cols'] = [{wch:44},{wch:18}];
+    ws['!cols'] = [{wch:44},{wch:22}];
     ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:1}}];
     XLSX.utils.book_append_sheet(wb, ws, 'Summary');
   }
